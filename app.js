@@ -775,9 +775,9 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 900px)").matches;
 }
 
-function collapseMobilePlayer() {
+/*function collapseMobilePlayer() {
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
-}
+}*/
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
