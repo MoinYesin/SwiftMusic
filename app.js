@@ -29,7 +29,6 @@ const nextBtn = document.querySelector("#nextBtn");
 const shuffleBtn = document.querySelector("#shuffleBtn");
 const repeatBtn = document.querySelector("#repeatBtn");
 const muteBtn = document.querySelector("#muteBtn");
-const clearBtn = document.querySelector("#clearBtn");
 const playerEl = document.querySelector(".player");
 const queueEl = document.querySelector(".queue");
 const githubForm = document.querySelector("#githubForm");
@@ -291,10 +290,20 @@ async function loadTrack(index, autoplay = true) {
   audio.crossOrigin = track.source === "github" && !githubToken ? "anonymous" : "";
   audio.src = playableUrl;
   audio.load();
-  trackTitle.textContent = track.title;
-  trackMeta.textContent = track.source === "github"
-    ? track.album
-    : `${track.file.type || "Audio"} - ${track.size}`;
+
+  // Animate track info change
+  trackTitle.style.opacity = "0";
+  trackTitle.style.transform = "translateY(6px)";
+  setTimeout(() => {
+    trackTitle.textContent = track.title;
+    trackMeta.textContent = track.source === "github"
+      ? track.album
+      : `${track.file.type || "Audio"} - ${track.size}`;
+    trackTitle.style.transition = "opacity 220ms ease, transform 220ms ease";
+    trackTitle.style.opacity = "1";
+    trackTitle.style.transform = "translateY(0)";
+  }, 60);
+
   statusText.textContent = autoplay ? "Now playing" : "Ready";
   renderPlaylist();
   renderHome();
@@ -775,9 +784,9 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 900px)").matches;
 }
 
-/*function collapseMobilePlayer() {
+function collapseMobilePlayer() {
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
-}*/
+}
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
@@ -851,16 +860,8 @@ muteBtn.addEventListener("click", () => {
   muteBtn.classList.toggle("active", audio.muted);
 });
 
-playerEl.addEventListener("touchstart", (event) => {
-  swipeStartY = event.touches[0].clientY;
+playerEl.addEventListener("touchstart", () => {
   expandMobilePlayer();
-}, { passive: true });
-
-playerEl.addEventListener("touchend", (event) => {
-  const endY = event.changedTouches[0].clientY;
-  if (swipeStartY - endY > 55 && window.matchMedia("(max-width: 900px)").matches) {
-    queueEl.classList.add("queue-open");
-  }
 }, { passive: true });
 
 queueEl.addEventListener("touchstart", (event) => {
@@ -869,8 +870,12 @@ queueEl.addEventListener("touchstart", (event) => {
 
 queueEl.addEventListener("touchend", (event) => {
   const endY = event.changedTouches[0].clientY;
-  if (endY - swipeStartY > 55 && window.matchMedia("(max-width: 900px)").matches) {
-    queueEl.classList.remove("queue-open");
+  const delta = swipeStartY - endY;
+  if (!window.matchMedia("(max-width: 900px)").matches) return;
+  if (delta > 45) {
+    queueEl.classList.add("queue-open");   // swipe up → open
+  } else if (delta < -45) {
+    queueEl.classList.remove("queue-open"); // swipe down → close
   }
 }, { passive: true });
 
@@ -887,27 +892,6 @@ window.addEventListener("scroll", () => {
   lastScrollY = window.scrollY;
 }, { passive: true });
 
-clearBtn.addEventListener("click", () => {
-  tracks.forEach((track) => {
-    if (track.source === "local") URL.revokeObjectURL(track.url);
-    if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
-  });
-  tracks = [];
-  shuffleQueueIndices = [];
-  shuffleQueueMode = "";
-  currentIndex = -1;
-  audio.pause();
-  audio.removeAttribute("src");
-  audio.load();
-  seek.value = 0;
-  currentTimeEl.textContent = "0:00";
-  durationEl.textContent = "0:00";
-  setPlayState();
-  renderPlaylist();
-  renderHome();
-  trackTitle.textContent = "No track loaded";
-  trackMeta.textContent = "MP3, WAV, OGG, M4A and other browser-supported audio files";
-});
 
 githubForm.addEventListener("submit", loadGithubRepository);
 
