@@ -78,11 +78,17 @@ svg {
 }
 
 .sidebar,
-.home,
-.player {
+.home{
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   background: rgba(20, 23, 27, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.player {
+  border: 3px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgb(20, 23, 27);
   box-shadow: var(--shadow);
 }
 
@@ -361,7 +367,7 @@ h2 {
 }
 
 .album-card span,
-.song-row > span:last-child > span {
+.song-row>span:last-child>span {
   color: var(--muted);
   font-size: 0.9rem;
 }
@@ -551,8 +557,8 @@ h2 {
   background: var(--mint);
 }
 
-.song-row > span:last-child,
-.album-song-row > span:last-child {
+.song-row>span:last-child,
+.album-song-row>span:last-child {
   min-width: 0;
 }
 
@@ -563,8 +569,8 @@ h2 {
   font-size: 0.98rem;
 }
 
-.song-row > span:last-child > span,
-.album-song-row > span:last-child > span {
+.song-row>span:last-child>span,
+.album-song-row>span:last-child>span {
   display: block;
   margin-top: 3px;
   overflow: hidden;
@@ -606,7 +612,7 @@ h2 {
   padding: 9px;
 }
 
-.track > button:first-child {
+.track>button:first-child {
   display: contents;
   color: inherit;
   text-align: left;
@@ -1259,6 +1265,7 @@ body.dragging .player {
     width: 100%;
   }
 }
+
 .queue {
   grid-column: 3;
   grid-row: 1;
