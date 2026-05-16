@@ -39,6 +39,7 @@ const muteBtn = document.querySelector("#muteBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const playerEl = document.querySelector(".player");
 const queueEl = document.querySelector(".queue");
+const titleActions = document.querySelector("#titleActions");
 const githubForm = document.querySelector("#githubForm");
 const repoInput = document.querySelector("#repoInput");
 const branchInput = document.querySelector("#branchInput");
@@ -536,6 +537,33 @@ function setPlayState() {
   document.body.classList.toggle("has-track", currentIndex !== -1);
   setMediaPlaybackState();
   setMediaPositionState();
+}
+
+function positionFavoriteButton() {
+  if (!favoriteBtn || !titleActions) return;
+  const mobile = isMobileViewport();
+  if (mobile) {
+    const collapsed = document.body.classList.contains("player-collapsed");
+    if (collapsed) {
+      titleActions.setAttribute("aria-hidden", "true");
+      const controls = document.querySelector(".controls");
+      if (!controls) return;
+      if (favoriteBtn.parentElement !== controls) {
+        controls.insertBefore(favoriteBtn, repeatBtn || null);
+      }
+      return;
+    }
+    titleActions.removeAttribute("aria-hidden");
+    if (favoriteBtn.parentElement !== titleActions) titleActions.appendChild(favoriteBtn);
+  } else {
+    titleActions.setAttribute("aria-hidden", "true");
+    const controls = document.querySelector(".controls");
+    // Restore to control cluster just before repeat.
+    if (!controls) return;
+    if (favoriteBtn.parentElement !== controls) {
+      controls.insertBefore(favoriteBtn, repeatBtn || null);
+    }
+  }
 }
 
 function nextTrack() {
@@ -1062,10 +1090,12 @@ function isMobileViewport() {
 
 function collapseMobilePlayer() {
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
+  positionFavoriteButton();
 }
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
+  positionFavoriteButton();
 }
 
 function drawVisualizer() {
@@ -1179,6 +1209,8 @@ window.addEventListener("scroll", () => {
   }
   lastScrollY = window.scrollY;
 }, { passive: true });
+
+window.addEventListener("resize", positionFavoriteButton);
 
 if (clearBtn) {
   clearBtn.addEventListener("click", () => {
@@ -1300,3 +1332,4 @@ renderPlaylist();
 renderHome();
 drawVisualizer();
 loadDefaultGithubAlbums();
+positionFavoriteButton();

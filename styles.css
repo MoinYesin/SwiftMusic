@@ -756,6 +756,25 @@ h2 {
   min-width: 0;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.title-row h2 {
+  min-width: 0;
+}
+
+.title-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+}
+
 .status {
   margin: 0 0 3px;
   font-size: 0.78rem;
@@ -1021,7 +1040,13 @@ body.dragging .player {
 
   .home-hero {
     grid-template-columns: 1fr;
-    min-height: 180px;
+    min-height: 110px;
+    padding: 16px;
+  }
+
+  .hero-copy {
+    margin-top: 8px;
+    font-size: 0.98rem;
   }
 
   .album-detail-head {
@@ -1169,6 +1194,12 @@ body.dragging .player {
   .utility {
     justify-content: stretch;
   }
+
+  /* On mobile, show favorite next to the title (above seekbar). */
+  .player .title-actions .icon-button {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 @media (max-width: 560px) {
@@ -1186,11 +1217,12 @@ body.dragging .player {
   }
 
   .home-hero {
-    padding: 20px;
+    min-height: 104px;
+    padding: 14px;
   }
 
   h1 {
-    font-size: clamp(3rem, 18vw, 5.2rem);
+    font-size: clamp(2.35rem, 14.5vw, 4.2rem);
   }
 
   .song-grid {
