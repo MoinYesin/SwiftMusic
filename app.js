@@ -8,6 +8,12 @@ const songCount = document.querySelector("#songCount");
 const sidebarLibraryCount = document.querySelector("#sidebarLibraryCount");
 const libraryStatus = document.querySelector("#libraryStatus");
 const albumGrid = document.querySelector("#albumGrid");
+const favoritesCard = document.querySelector("#favoritesCard");
+const favoritesMeta = document.querySelector("#favoritesMeta");
+const favoritesPreview = document.querySelector("#favoritesPreview");
+const favoritesDetail = document.querySelector("#favoritesDetail");
+const favoritesDetailMeta = document.querySelector("#favoritesDetailMeta");
+const favoritesSongList = document.querySelector("#favoritesSongList");
 const songGrid = document.querySelector("#songGrid");
 const albumDetail = document.querySelector("#albumDetail");
 const albumDetailTitle = document.querySelector("#albumDetailTitle");
@@ -27,8 +33,10 @@ const playIcon = document.querySelector("#playIcon");
 const prevBtn = document.querySelector("#prevBtn");
 const nextBtn = document.querySelector("#nextBtn");
 const shuffleBtn = document.querySelector("#shuffleBtn");
+const favoriteBtn = document.querySelector("#favoriteBtn");
 const repeatBtn = document.querySelector("#repeatBtn");
 const muteBtn = document.querySelector("#muteBtn");
+const clearBtn = document.querySelector("#clearBtn");
 const playerEl = document.querySelector(".player");
 const queueEl = document.querySelector(".queue");
 const githubForm = document.querySelector("#githubForm");
@@ -51,6 +59,7 @@ const defaultGithubAlbums = [
 ];
 const playCountsKey = "taylorAlbumsPlayCounts";
 const lastPlayedKey = "taylorAlbumsLastPlayed";
+const favoritesKey = "taylorAlbumsFavorites";
 const mostPlayedLimit = 10;
 
 let tracks = [];
@@ -71,6 +80,116 @@ let shuffleQueueIndices = [];
 let shuffleQueueMode = "";
 let swipeStartY = 0;
 let lastScrollY = window.scrollY;
+let favorites = readFavorites();
+let favoritesOpen = false;
+let lastOpenedPanel = "";
+let lastMediaPositionUpdate = 0;
+
+function hasMediaSession() {
+  return "mediaSession" in navigator;
+}
+
+function artworkMimeType(src) {
+  const ext = (() => {
+    try {
+      const url = new URL(src, window.location.href);
+      const parts = url.pathname.split(".");
+      return (parts.length > 1 ? parts.pop() : "").toLowerCase();
+    } catch {
+      const clean = String(src).split("?")[0].split("#")[0];
+      const parts = clean.split(".");
+      return (parts.length > 1 ? parts.pop() : "").toLowerCase();
+    }
+  })();
+
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "avif") return "image/avif";
+  if (ext === "svg") return "image/svg+xml";
+  return "image/jpeg";
+}
+
+function setMediaMetadata(track) {
+  if (!hasMediaSession() || !track) return;
+  const artist = track.source === "github" ? "Taylor Swift" : "Local files";
+  const artworkSrc = track.coverUrl || "";
+  const artworkType = artworkSrc ? artworkMimeType(artworkSrc) : "";
+  const artwork = artworkSrc
+    ? [
+      { src: artworkSrc, sizes: "96x96", type: artworkType },
+      { src: artworkSrc, sizes: "192x192", type: artworkType },
+      { src: artworkSrc, sizes: "512x512", type: artworkType }
+    ]
+    : [];
+
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title,
+      artist,
+      album: track.album || "",
+      artwork
+    });
+  } catch {
+    // Ignore if MediaMetadata is unavailable.
+  }
+}
+
+function setMediaPlaybackState() {
+  if (!hasMediaSession()) return;
+  navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+}
+
+function setMediaPositionState() {
+  if (!hasMediaSession()) return;
+  if (typeof navigator.mediaSession.setPositionState !== "function") return;
+  if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+  navigator.mediaSession.setPositionState({
+    duration: audio.duration,
+    playbackRate: audio.playbackRate || 1,
+    position: audio.currentTime || 0
+  });
+}
+
+function installMediaActionHandlers() {
+  if (!hasMediaSession() || installMediaActionHandlers.installed) return;
+  installMediaActionHandlers.installed = true;
+
+  const safeSet = (action, handler) => {
+    try {
+      navigator.mediaSession.setActionHandler(action, handler);
+    } catch {
+      // Some actions may not be supported.
+    }
+  };
+
+  safeSet("play", () => playAudio());
+  safeSet("pause", () => pauseAudio());
+  safeSet("previoustrack", () => previousTrack());
+  safeSet("nexttrack", () => nextTrack());
+  safeSet("seekbackward", (details) => {
+    const step = details?.seekOffset ?? 10;
+    audio.currentTime = Math.max((audio.currentTime || 0) - step, 0);
+    setMediaPositionState();
+  });
+  safeSet("seekforward", (details) => {
+    const step = details?.seekOffset ?? 10;
+    audio.currentTime = Math.min((audio.currentTime || 0) + step, audio.duration || 0);
+    setMediaPositionState();
+  });
+  safeSet("seekto", (details) => {
+    if (!Number.isFinite(details?.seekTime)) return;
+    if (typeof audio.fastSeek === "function" && details.fastSeek) audio.fastSeek(details.seekTime);
+    else audio.currentTime = details.seekTime;
+    setMediaPositionState();
+  });
+  safeSet("stop", () => {
+    pauseAudio();
+    audio.currentTime = 0;
+    setMediaPositionState();
+    setMediaPlaybackState();
+  });
+}
 
 audio.volume = Number(volume.value);
 
@@ -88,6 +207,33 @@ function readPlayCounts() {
 
 function savePlayCounts() {
   localStorage.setItem(playCountsKey, JSON.stringify(playCounts));
+}
+
+function readFavorites() {
+  try {
+    return JSON.parse(localStorage.getItem(favoritesKey)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveFavorites() {
+  localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+}
+
+function isFavorite(track) {
+  if (!track) return false;
+  return Boolean(favorites[track.key]);
+}
+
+function toggleFavorite(track) {
+  if (!track) return;
+  if (isFavorite(track)) delete favorites[track.key];
+  else favorites[track.key] = true;
+  saveFavorites();
+  updateFavoriteButton();
+  renderHome();
+  renderPlaylist();
 }
 
 function readLastPlayed() {
@@ -222,6 +368,14 @@ function recordPlay(track) {
   renderHome();
 }
 
+function updateFavoriteButton() {
+  const track = tracks[currentIndex];
+  const active = isFavorite(track);
+  favoriteBtn.classList.toggle("active", active);
+  favoriteBtn.setAttribute("aria-label", active ? "Unfavorite" : "Favorite");
+  favoriteBtn.setAttribute("title", active ? "Unfavorite" : "Favorite");
+}
+
 function fileExtension(fileName) {
   return fileName.split(".").pop().toLowerCase();
 }
@@ -278,6 +432,7 @@ async function loadTrack(index, autoplay = true) {
   if (!tracks[index]) return;
   currentIndex = index;
   countedTrackId = "";
+  document.body.classList.add("has-track");
   const track = tracks[currentIndex];
   statusText.textContent = "Loading";
   let playableUrl;
@@ -290,21 +445,15 @@ async function loadTrack(index, autoplay = true) {
   audio.crossOrigin = track.source === "github" && !githubToken ? "anonymous" : "";
   audio.src = playableUrl;
   audio.load();
-
-  // Animate track info change
-  trackTitle.style.opacity = "0";
-  trackTitle.style.transform = "translateY(6px)";
-  setTimeout(() => {
-    trackTitle.textContent = track.title;
-    trackMeta.textContent = track.source === "github"
-      ? track.album
-      : `${track.file.type || "Audio"} - ${track.size}`;
-    trackTitle.style.transition = "opacity 220ms ease, transform 220ms ease";
-    trackTitle.style.opacity = "1";
-    trackTitle.style.transform = "translateY(0)";
-  }, 60);
-
+  trackTitle.textContent = track.title;
+  trackMeta.textContent = track.source === "github"
+    ? track.album
+    : `${track.file.type || "Audio"} - ${track.size}`;
   statusText.textContent = autoplay ? "Now playing" : "Ready";
+  installMediaActionHandlers();
+  setMediaMetadata(track);
+  setMediaPlaybackState();
+  updateFavoriteButton();
   renderPlaylist();
   renderHome();
 
@@ -383,6 +532,10 @@ function setPlayState() {
     : '<path d="m8 5 11 7-11 7V5Z"/>';
   disc.classList.toggle("playing", playing);
   statusText.textContent = currentIndex === -1 ? "Choose audio files to begin" : playing ? "Now playing" : "Paused";
+  document.body.classList.toggle("is-playing", playing);
+  document.body.classList.toggle("has-track", currentIndex !== -1);
+  setMediaPlaybackState();
+  setMediaPositionState();
 }
 
 function nextTrack() {
@@ -457,6 +610,16 @@ function renderPlaylist() {
     copy.append(title, meta);
     selectButton.append(number, copy);
 
+    const fav = document.createElement("button");
+    fav.className = `fav${isFavorite(track) ? " active" : ""}`;
+    fav.type = "button";
+    fav.setAttribute("aria-label", isFavorite(track) ? `Unfavorite ${track.title}` : `Favorite ${track.title}`);
+    fav.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>';
+    fav.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFavorite(track);
+    });
+
     const remove = document.createElement("button");
     remove.className = "remove";
     remove.type = "button";
@@ -464,7 +627,7 @@ function renderPlaylist() {
     remove.setAttribute("aria-label", `Remove ${track.title}`);
     remove.addEventListener("click", () => removeTrack(track.id));
 
-    li.append(selectButton, remove);
+    li.append(selectButton, fav, remove);
     playlistEl.append(li);
   });
 
@@ -552,7 +715,18 @@ function renderHome() {
     const meta = document.createElement("span");
     meta.textContent = `${plays} ${plays === 1 ? "play" : "plays"} - ${track.album || track.repo || track.size}`;
     copy.append(title, meta);
-    button.append(number, copy);
+
+    const fav = document.createElement("button");
+    fav.className = `fav${isFavorite(track) ? " active" : ""}`;
+    fav.type = "button";
+    fav.setAttribute("aria-label", isFavorite(track) ? `Unfavorite ${track.title}` : `Favorite ${track.title}`);
+    fav.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>';
+    fav.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFavorite(track);
+    });
+
+    button.append(number, copy, fav);
     songGrid.append(button);
   });
 
@@ -560,11 +734,33 @@ function renderHome() {
     songGrid.innerHTML = '<div class="home-empty">Play a few songs and your most played tracks will appear here.</div>';
   }
 
+  const favoriteTracks = tracks
+    .map((track, index) => ({ track, index }))
+    .filter((item) => isFavorite(item.track));
+
+  favoritesMeta.textContent = `${favoriteTracks.length} ${favoriteTracks.length === 1 ? "favorite" : "favorites"}`;
+  favoritesPreview.innerHTML = "";
+  favoriteTracks
+    .slice(0, 3)
+    .forEach(({ track }) => {
+      const chip = document.createElement("span");
+      chip.className = "favorites-chip";
+      chip.textContent = track.title;
+      favoritesPreview.append(chip);
+    });
+  if (!favoriteTracks.length) {
+    const chip = document.createElement("span");
+    chip.className = "favorites-chip muted";
+    chip.textContent = "No favorites yet";
+    favoritesPreview.append(chip);
+  }
+
   albumCount.textContent = `${albums.length} ${albums.length === 1 ? "album" : "albums"}`;
   const totalPlays = tracks.reduce((total, track) => total + playCountFor(track), 0);
   songCount.textContent = `${totalPlays} ${totalPlays === 1 ? "play" : "plays"}`;
   sidebarLibraryCount.textContent = `${albums.length} albums, ${tracks.length} songs`;
   renderAlbumDetail(albums);
+  renderFavoritesDetail();
   if (!tracks.length) {
     libraryStatus.textContent = "Loading songs from GitHub...";
   } else {
@@ -573,10 +769,30 @@ function renderHome() {
 }
 
 function openAlbum(albumName) {
+  if (selectedAlbumName === albumName) {
+    selectedAlbumName = "";
+    favoritesOpen = false;
+    renderHome();
+    return;
+  }
   selectedAlbumName = albumName;
+  favoritesOpen = false;
   renderHome();
   albumDetail.hidden = false;
   albumDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function openFavorites() {
+  if (favoritesOpen) {
+    favoritesOpen = false;
+    renderHome();
+    return;
+  }
+  favoritesOpen = true;
+  selectedAlbumName = "";
+  renderHome();
+  favoritesDetail.hidden = false;
+  favoritesDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function renderAlbumDetail(albums = [...groupedAlbums().values()]) {
@@ -607,8 +823,68 @@ function renderAlbumDetail(albums = [...groupedAlbums().values()]) {
     const plays = playCountFor(track);
     meta.textContent = `${plays} ${plays === 1 ? "play" : "plays"} - ${track.size}`;
     copy.append(title, meta);
-    button.append(number, copy);
+    const fav = document.createElement("button");
+    fav.className = `fav${isFavorite(track) ? " active" : ""}`;
+    fav.type = "button";
+    fav.setAttribute("aria-label", isFavorite(track) ? `Unfavorite ${track.title}` : `Favorite ${track.title}`);
+    fav.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>';
+    fav.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFavorite(track);
+    });
+
+    button.append(number, copy, fav);
     albumSongList.append(button);
+  });
+}
+
+function renderFavoritesDetail() {
+  favoritesDetail.hidden = !favoritesOpen;
+  favoritesSongList.innerHTML = "";
+  if (!favoritesOpen) return;
+
+  const favoriteTracks = tracks
+    .map((track, index) => ({ track, index }))
+    .filter((item) => isFavorite(item.track))
+    .sort((a, b) => (a.track.album || "").localeCompare(b.track.album || "") || a.track.title.localeCompare(b.track.title));
+
+  favoritesDetailMeta.textContent = `${favoriteTracks.length} ${favoriteTracks.length === 1 ? "song" : "songs"}`;
+
+  if (!favoriteTracks.length) {
+    favoritesSongList.innerHTML = '<div class="home-empty">No favorites yet. Tap the heart on a song to save it.</div>';
+    return;
+  }
+
+  favoriteTracks.forEach(({ track, index }, favoriteIndex) => {
+    const button = document.createElement("button");
+    button.className = `album-song-row${index === currentIndex ? " active" : ""}`;
+    button.type = "button";
+    button.setAttribute("aria-label", `Play ${track.title}`);
+    button.addEventListener("click", () => loadTrack(index));
+
+    const number = document.createElement("span");
+    number.className = "song-number";
+    number.textContent = favoriteIndex + 1;
+
+    const copy = document.createElement("span");
+    const title = document.createElement("strong");
+    title.textContent = track.title;
+    const meta = document.createElement("span");
+    meta.textContent = track.album || track.size;
+    copy.append(title, meta);
+
+    const fav = document.createElement("button");
+    fav.className = "fav active";
+    fav.type = "button";
+    fav.setAttribute("aria-label", `Remove ${track.title} from favorites`);
+    fav.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>';
+    fav.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFavorite(track);
+    });
+
+    button.append(number, copy, fav);
+    favoritesSongList.append(button);
   });
 }
 
@@ -837,6 +1113,7 @@ playBtn.addEventListener("click", () => {
 prevBtn.addEventListener("click", previousTrack);
 nextBtn.addEventListener("click", nextTrack);
 shuffleAllBtn.addEventListener("click", shuffleAllAlbums);
+favoritesCard.addEventListener("click", openFavorites);
 
 shuffleBtn.addEventListener("click", () => {
   shuffle = !shuffle;
@@ -850,6 +1127,8 @@ shuffleBtn.addEventListener("click", () => {
   renderPlaylist();
 });
 
+favoriteBtn.addEventListener("click", () => toggleFavorite(tracks[currentIndex]));
+
 repeatBtn.addEventListener("click", () => {
   repeat = !repeat;
   repeatBtn.classList.toggle("active", repeat);
@@ -860,8 +1139,16 @@ muteBtn.addEventListener("click", () => {
   muteBtn.classList.toggle("active", audio.muted);
 });
 
-playerEl.addEventListener("touchstart", () => {
+playerEl.addEventListener("touchstart", (event) => {
+  swipeStartY = event.touches[0].clientY;
   expandMobilePlayer();
+}, { passive: true });
+
+playerEl.addEventListener("touchend", (event) => {
+  const endY = event.changedTouches[0].clientY;
+  if (swipeStartY - endY > 55 && window.matchMedia("(max-width: 900px)").matches) {
+    document.body.classList.add("queue-open");
+  }
 }, { passive: true });
 
 queueEl.addEventListener("touchstart", (event) => {
@@ -870,12 +1157,8 @@ queueEl.addEventListener("touchstart", (event) => {
 
 queueEl.addEventListener("touchend", (event) => {
   const endY = event.changedTouches[0].clientY;
-  const delta = swipeStartY - endY;
-  if (!window.matchMedia("(max-width: 900px)").matches) return;
-  if (delta > 45) {
-    queueEl.classList.add("queue-open");   // swipe up → open
-  } else if (delta < -45) {
-    queueEl.classList.remove("queue-open"); // swipe down → close
+  if (endY - swipeStartY > 55 && window.matchMedia("(max-width: 900px)").matches) {
+    document.body.classList.remove("queue-open");
   }
 }, { passive: true });
 
@@ -883,15 +1166,41 @@ document.addEventListener("click", (event) => {
   if (!isMobileViewport()) return;
   if (!playerEl.contains(event.target) && !queueEl.contains(event.target)) {
     collapseMobilePlayer();
+    document.body.classList.remove("queue-open");
   }
 });
 
 window.addEventListener("scroll", () => {
   if (!isMobileViewport()) return;
-  if (Math.abs(window.scrollY - lastScrollY) > 8) collapseMobilePlayer();
+  if (window.scrollY <= 4) {
+    expandMobilePlayer();
+  } else if (Math.abs(window.scrollY - lastScrollY) > 8) {
+    collapseMobilePlayer();
+  }
   lastScrollY = window.scrollY;
 }, { passive: true });
 
+clearBtn.addEventListener("click", () => {
+  tracks.forEach((track) => {
+    if (track.source === "local") URL.revokeObjectURL(track.url);
+    if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
+  });
+  tracks = [];
+  shuffleQueueIndices = [];
+  shuffleQueueMode = "";
+  currentIndex = -1;
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  seek.value = 0;
+  currentTimeEl.textContent = "0:00";
+  durationEl.textContent = "0:00";
+  setPlayState();
+  renderPlaylist();
+  renderHome();
+  trackTitle.textContent = "No track loaded";
+  trackMeta.textContent = "MP3, WAV, OGG, M4A and other browser-supported audio files";
+});
 
 githubForm.addEventListener("submit", loadGithubRepository);
 
@@ -910,6 +1219,7 @@ seek.addEventListener("input", () => {
 seek.addEventListener("change", () => {
   audio.currentTime = (Number(seek.value) / 1000) * (audio.duration || 0);
   isSeeking = false;
+  setMediaPositionState();
 });
 
 audio.addEventListener("play", setPlayState);
@@ -921,6 +1231,8 @@ audio.addEventListener("loadedmetadata", () => {
     audio.currentTime = Math.min(pendingSeekTime, audio.duration || pendingSeekTime);
     pendingSeekTime = 0;
   }
+  setMediaPositionState();
+  setMediaPlaybackState();
   saveLastPlayed();
 });
 
@@ -929,8 +1241,17 @@ audio.addEventListener("timeupdate", () => {
     seek.value = audio.duration ? String((audio.currentTime / audio.duration) * 1000) : "0";
     currentTimeEl.textContent = formatTime(audio.currentTime);
   }
+  const now = Date.now();
+  if (now - lastMediaPositionUpdate > 750) {
+    lastMediaPositionUpdate = now;
+    setMediaPositionState();
+  }
   saveLastPlayed();
 });
+
+audio.addEventListener("ratechange", () => setMediaPositionState());
+audio.addEventListener("seeked", () => setMediaPositionState());
+audio.addEventListener("durationchange", () => setMediaPositionState());
 
 audio.addEventListener("ended", () => {
   if (repeat) {
@@ -966,6 +1287,12 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("drop", (event) => addFiles(event.dataTransfer.files));
+
+installMediaActionHandlers();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 
 renderPlaylist();
 renderHome();

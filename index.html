@@ -4,8 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Taylor Stream</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta name="theme-color" content="#0d0f12">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -43,6 +44,33 @@
             <button id="shuffleAllBtn" type="button" class="primary-button">Shuffle All</button>
           </div>
         </header>
+
+        <section class="home-section" aria-labelledby="favoritesHeading">
+          <div class="section-head">
+            <h2 id="favoritesHeading">Favorites</h2>
+          </div>
+          <button id="favoritesCard" type="button" class="favorites-card" aria-label="Open favorites">
+            <span class="favorites-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
+            </span>
+            <span class="favorites-copy">
+              <strong>Saved Songs</strong>
+              <span id="favoritesMeta">0 favorites</span>
+            </span>
+            <span id="favoritesPreview" class="favorites-preview" aria-hidden="true"></span>
+          </button>
+        </section>
+
+        <section id="favoritesDetail" class="album-detail favorites-detail" aria-labelledby="favoritesDetailTitle" hidden>
+          <div class="album-detail-head">
+            <div>
+              <p class="eyebrow">Favorites</p>
+              <h2 id="favoritesDetailTitle">Saved Songs</h2>
+              <span id="favoritesDetailMeta">0 songs</span>
+            </div>
+          </div>
+          <div id="favoritesSongList" class="album-song-list favorites-song-list"></div>
+        </section>
 
         <section class="home-section" aria-labelledby="albumsHeading">
           <div class="section-head">
@@ -118,6 +146,9 @@
           <button id="nextBtn" class="icon-button" type="button" aria-label="Next track" title="Next">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 4 10 8-10 8V4ZM19 5v14"/></svg>
           </button>
+          <button id="favoriteBtn" class="icon-button" type="button" aria-label="Favorite" title="Favorite">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
+          </button>
           <button id="repeatBtn" class="icon-button" type="button" aria-label="Repeat" title="Repeat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></svg>
           </button>
@@ -128,7 +159,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9.5a4 4 0 0 1 0 5"/></svg>
           </button>
           <input id="volume" type="range" min="0" max="1" value="0.8" step="0.01" aria-label="Volume">
-
+          <button id="clearBtn" type="button" class="text-button">Clear playlist</button>
         </section>
       </section>
 
