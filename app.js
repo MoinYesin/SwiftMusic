@@ -1180,27 +1180,29 @@ window.addEventListener("scroll", () => {
   lastScrollY = window.scrollY;
 }, { passive: true });
 
-clearBtn.addEventListener("click", () => {
-  tracks.forEach((track) => {
-    if (track.source === "local") URL.revokeObjectURL(track.url);
-    if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
+if (clearBtn) {
+  clearBtn.addEventListener("click", () => {
+    tracks.forEach((track) => {
+      if (track.source === "local") URL.revokeObjectURL(track.url);
+      if (track.objectUrl) URL.revokeObjectURL(track.objectUrl);
+    });
+    tracks = [];
+    shuffleQueueIndices = [];
+    shuffleQueueMode = "";
+    currentIndex = -1;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    seek.value = 0;
+    currentTimeEl.textContent = "0:00";
+    durationEl.textContent = "0:00";
+    setPlayState();
+    renderPlaylist();
+    renderHome();
+    trackTitle.textContent = "No track loaded";
+    trackMeta.textContent = "MP3, WAV, OGG, M4A and other browser-supported audio files";
   });
-  tracks = [];
-  shuffleQueueIndices = [];
-  shuffleQueueMode = "";
-  currentIndex = -1;
-  audio.pause();
-  audio.removeAttribute("src");
-  audio.load();
-  seek.value = 0;
-  currentTimeEl.textContent = "0:00";
-  durationEl.textContent = "0:00";
-  setPlayState();
-  renderPlaylist();
-  renderHome();
-  trackTitle.textContent = "No track loaded";
-  trackMeta.textContent = "MP3, WAV, OGG, M4A and other browser-supported audio files";
-});
+}
 
 githubForm.addEventListener("submit", loadGithubRepository);
 
