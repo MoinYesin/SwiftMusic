@@ -98,7 +98,6 @@ Integrates with:
 
 🚀 Live Demo
 
-Add your GitHub Pages link here:
 
 https://moinyesin.github.io/SwiftMusic/
 
