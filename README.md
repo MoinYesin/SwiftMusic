@@ -119,7 +119,7 @@ https://moinyesin.github.io/SwiftMusic/
 
 Clone Repository
 
-git clone https://github.com/yourusername/yourrepo.git
+git clone https://github.com/moinyesin/SwiftMusic.git
 
 Run Locally
 
