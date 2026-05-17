@@ -1069,6 +1069,16 @@ body.dragging .player {
     transition: transform 180ms ease;
   }
 
+  /* Prevent page scroll when swiping on the now-playing strip. */
+  .player .now-playing {
+    touch-action: pan-x;
+    user-select: none;
+  }
+
+  .player .timeline {
+    touch-action: pan-x;
+  }
+
   .player::before {
     content: "";
     justify-self: center;

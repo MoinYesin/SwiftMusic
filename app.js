@@ -39,6 +39,7 @@ const muteBtn = document.querySelector("#muteBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const playerEl = document.querySelector(".player");
 const queueEl = document.querySelector(".queue");
+const nowPlayingEl = document.querySelector(".now-playing");
 const titleActions = document.querySelector("#titleActions");
 const githubForm = document.querySelector("#githubForm");
 const repoInput = document.querySelector("#repoInput");
@@ -80,11 +81,37 @@ let pendingSeekTime = 0;
 let shuffleQueueIndices = [];
 let shuffleQueueMode = "";
 let swipeStartY = 0;
+let swipeStartX = 0;
+let swipeTracking = false;
 let lastScrollY = window.scrollY;
 let favorites = readFavorites();
 let favoritesOpen = false;
 let lastOpenedPanel = "";
 let lastMediaPositionUpdate = 0;
+let queueContext = { mode: "repo", label: "", indices: [] };
+
+function setQueueContextRepo(label = "") {
+  queueContext = { mode: "repo", label, indices: [] };
+}
+
+function setQueueContextList(label, indices, currentTrackIndex) {
+  const unique = [...new Set(indices)].filter((index) => Number.isInteger(index) && index >= 0 && index < tracks.length);
+  queueContext = { mode: "list", label, indices: unique };
+  if (shuffle) {
+    // Shuffle within the active list (or album/repo) while starting from the chosen song.
+    const items = baseQueueItems({ ignoreShuffle: true });
+    const shuffled = shuffledIndices(items);
+    const startIndex = Number.isInteger(currentTrackIndex) ? currentTrackIndex : -1;
+    if (startIndex >= 0) {
+      const pos = shuffled.indexOf(startIndex);
+      if (pos > 0) shuffleQueueIndices = [startIndex, ...shuffled.filter((id) => id !== startIndex)];
+      else shuffleQueueIndices = shuffled;
+    } else {
+      shuffleQueueIndices = shuffled;
+    }
+    shuffleQueueMode = label || "list";
+  }
+}
 
 function hasMediaSession() {
   return "mediaSession" in navigator;
@@ -312,6 +339,21 @@ function playCountFor(track) {
   return playCounts[track.key] || 0;
 }
 
+function baseQueueItems({ ignoreShuffle = false } = {}) {
+  const currentTrack = tracks[currentIndex];
+  if (!currentTrack) return [];
+
+  if (queueContext.mode === "list" && queueContext.indices.length) {
+    return queueContext.indices.map((index) => ({ track: tracks[index], index })).filter((item) => item.track);
+  }
+
+  // Default: keep the queue scoped to the current repo/album.
+  const repo = currentTrack.repo;
+  return tracks
+    .map((track, index) => ({ track, index }))
+    .filter((item) => item.track && item.track.repo === repo);
+}
+
 function currentQueueTracks() {
   const currentTrack = tracks[currentIndex];
   if (!currentTrack) return [];
@@ -320,9 +362,7 @@ function currentQueueTracks() {
       .map((index) => ({ track: tracks[index], index }))
       .filter((item) => item.track);
   }
-  return tracks
-    .map((track, index) => ({ track, index }))
-    .filter((item) => item.track.repo === currentTrack.repo);
+  return baseQueueItems();
 }
 
 function shuffledIndices(items) {
@@ -335,20 +375,16 @@ function shuffledIndices(items) {
 }
 
 function buildAlbumShuffleQueue() {
-  const baseQueue = shuffle && shuffleQueueIndices.length
-    ? tracks
-      .map((track, index) => ({ track, index }))
-      .filter((item) => item.track.repo === tracks[currentIndex]?.repo)
-    : currentQueueTracks();
-  const albumItems = baseQueue.length
-    ? baseQueue
-    : tracks.map((track, index) => ({ track, index }));
-  shuffleQueueIndices = shuffledIndices(albumItems);
-  shuffleQueueMode = "album";
+  const baseQueue = baseQueueItems({ ignoreShuffle: true });
+  const items = baseQueue.length ? baseQueue : tracks.map((track, index) => ({ track, index }));
+  shuffleQueueIndices = shuffledIndices(items);
+  shuffleQueueMode = queueContext.label || "album";
 }
 
 function playAlbum(album) {
   if (!album) return;
+  const albumIndices = album.tracks.map((item) => item.index);
+  setQueueContextList(album.name, albumIndices, album.firstIndex);
   if (shuffle) {
     shuffleQueueIndices = shuffledIndices(album.tracks);
     shuffleQueueMode = "album";
@@ -593,6 +629,12 @@ function removeTrack(id) {
   shuffleQueueIndices = shuffleQueueIndices
     .filter((trackIndex) => trackIndex !== index)
     .map((trackIndex) => (trackIndex > index ? trackIndex - 1 : trackIndex));
+  if (queueContext.mode === "list" && queueContext.indices.length) {
+    queueContext.indices = queueContext.indices
+      .filter((trackIndex) => trackIndex !== index)
+      .map((trackIndex) => (trackIndex > index ? trackIndex - 1 : trackIndex));
+    if (!queueContext.indices.length) setQueueContextRepo();
+  }
   if (removed.source === "local") URL.revokeObjectURL(removed.url);
   if (removed.objectUrl) URL.revokeObjectURL(removed.objectUrl);
 
@@ -725,13 +767,17 @@ function renderHome() {
     .filter((item) => item.plays > 0)
     .sort((a, b) => b.plays - a.plays || a.track.title.localeCompare(b.track.title))
     .slice(0, mostPlayedLimit);
+  const mostPlayedIndices = mostPlayedTracks.map((item) => item.index);
 
   mostPlayedTracks.forEach(({ track, index, plays }, rank) => {
     const button = document.createElement("button");
     button.className = `song-row${index === currentIndex ? " active" : ""}`;
     button.type = "button";
     button.setAttribute("aria-label", `Play ${track.title}`);
-    button.addEventListener("click", () => loadTrack(index));
+    button.addEventListener("click", () => {
+      setQueueContextList("mostPlayed", mostPlayedIndices, index);
+      loadTrack(index);
+    });
 
     const number = document.createElement("span");
     number.className = "song-number";
@@ -832,13 +878,17 @@ function renderAlbumDetail(albums = [...groupedAlbums().values()]) {
   albumDetailTitle.textContent = album.name;
   albumDetailMeta.textContent = `${album.tracks.length} ${album.tracks.length === 1 ? "song" : "songs"}`;
   playAlbumBtn.onclick = () => playAlbum(album);
+  const albumIndices = album.tracks.map((item) => item.index);
 
   album.tracks.forEach(({ track, index }, albumIndex) => {
     const button = document.createElement("button");
     button.className = `album-song-row${index === currentIndex ? " active" : ""}`;
     button.type = "button";
     button.setAttribute("aria-label", `Play ${track.title}`);
-    button.addEventListener("click", () => loadTrack(index));
+    button.addEventListener("click", () => {
+      setQueueContextList(album.name, albumIndices, index);
+      loadTrack(index);
+    });
 
     const number = document.createElement("span");
     number.className = "song-number";
@@ -875,6 +925,7 @@ function renderFavoritesDetail() {
     .map((track, index) => ({ track, index }))
     .filter((item) => isFavorite(item.track))
     .sort((a, b) => (a.track.album || "").localeCompare(b.track.album || "") || a.track.title.localeCompare(b.track.title));
+  const favoriteIndices = favoriteTracks.map((item) => item.index);
 
   favoritesDetailMeta.textContent = `${favoriteTracks.length} ${favoriteTracks.length === 1 ? "song" : "songs"}`;
 
@@ -888,7 +939,10 @@ function renderFavoritesDetail() {
     button.className = `album-song-row${index === currentIndex ? " active" : ""}`;
     button.type = "button";
     button.setAttribute("aria-label", `Play ${track.title}`);
-    button.addEventListener("click", () => loadTrack(index));
+    button.addEventListener("click", () => {
+      setQueueContextList("favorites", favoriteIndices, index);
+      loadTrack(index);
+    });
 
     const number = document.createElement("span");
     number.className = "song-number";
@@ -1077,6 +1131,7 @@ async function loadDefaultGithubAlbums() {
 function shuffleAllAlbums() {
   if (!tracks.length) return;
   shuffle = true;
+  setQueueContextRepo("all");
   shuffleQueueIndices = shuffledIndices(tracks.map((track, index) => ({ track, index })));
   shuffleQueueMode = "all";
   shuffleBtn.classList.add("active");
@@ -1169,17 +1224,90 @@ muteBtn.addEventListener("click", () => {
   muteBtn.classList.toggle("active", audio.muted);
 });
 
-playerEl.addEventListener("touchstart", (event) => {
-  swipeStartY = event.touches[0].clientY;
-  expandMobilePlayer();
-}, { passive: true });
+// Mobile queue gesture: only from the now-playing strip.
+if (nowPlayingEl) {
+  const startSwipe = (clientX, clientY) => {
+    swipeStartY = clientY;
+    swipeStartX = clientX;
+    swipeTracking = true;
+    expandMobilePlayer();
+  };
 
-playerEl.addEventListener("touchend", (event) => {
-  const endY = event.changedTouches[0].clientY;
-  if (swipeStartY - endY > 55 && window.matchMedia("(max-width: 900px)").matches) {
-    document.body.classList.add("queue-open");
+  const maybeOpenQueue = (clientX, clientY) => {
+    const dy = swipeStartY - clientY;
+    const dx = Math.abs(clientX - swipeStartX);
+    if (dy > 55 && dx < 80 && isMobileViewport()) {
+      document.body.classList.add("queue-open");
+    }
+  };
+
+  const swipeZoneEls = [nowPlayingEl, document.querySelector(".timeline")].filter(Boolean);
+
+  if ("PointerEvent" in window) {
+    swipeZoneEls.forEach((el) => el.addEventListener("pointerdown", (event) => {
+      if (!isMobileViewport()) return;
+      if (event.pointerType !== "touch") return;
+      if (event.target && event.target.closest && event.target.closest("#seek")) return;
+      swipeTracking = false;
+      startSwipe(event.clientX, event.clientY);
+      try {
+        el.setPointerCapture(event.pointerId);
+      } catch {
+        // Ignore.
+      }
+    }, { passive: true }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("pointermove", (event) => {
+      if (!swipeTracking || !isMobileViewport()) return;
+      if (event.pointerType !== "touch") return;
+      const dy = event.clientY - swipeStartY;
+      const dx = event.clientX - swipeStartX;
+      if (dy < -6 && Math.abs(dy) > Math.abs(dx)) {
+        event.preventDefault();
+      }
+    }, { passive: false }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("pointerup", (event) => {
+      if (!swipeTracking) return;
+      swipeTracking = false;
+      if (event.pointerType !== "touch") return;
+      maybeOpenQueue(event.clientX, event.clientY);
+    }, { passive: true }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("pointercancel", () => {
+      swipeTracking = false;
+    }, { passive: true }));
+  } else {
+    // Fallback for older browsers.
+    swipeZoneEls.forEach((el) => el.addEventListener("touchstart", (event) => {
+      if (!isMobileViewport()) return;
+      if (event.target && event.target.closest && event.target.closest("#seek")) return;
+      const touch = event.touches[0];
+      startSwipe(touch.clientX, touch.clientY);
+    }, { passive: true }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("touchmove", (event) => {
+      if (!swipeTracking || !isMobileViewport()) return;
+      const touch = event.touches[0];
+      const dy = touch.clientY - swipeStartY;
+      const dx = touch.clientX - swipeStartX;
+      if (dy < -6 && Math.abs(dy) > Math.abs(dx)) {
+        event.preventDefault();
+      }
+    }, { passive: false }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("touchend", (event) => {
+      if (!swipeTracking) return;
+      swipeTracking = false;
+      const touch = event.changedTouches[0];
+      maybeOpenQueue(touch.clientX, touch.clientY);
+    }, { passive: true }));
+
+    swipeZoneEls.forEach((el) => el.addEventListener("touchcancel", () => {
+      swipeTracking = false;
+    }, { passive: true }));
   }
-}, { passive: true });
+}
 
 queueEl.addEventListener("touchstart", (event) => {
   swipeStartY = event.touches[0].clientY;
