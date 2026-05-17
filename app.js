@@ -41,6 +41,7 @@ const playerEl = document.querySelector(".player");
 const queueEl = document.querySelector(".queue");
 const nowPlayingEl = document.querySelector(".now-playing");
 const titleActions = document.querySelector("#titleActions");
+const playerRightActions = document.querySelector("#playerRightActions");
 const githubForm = document.querySelector("#githubForm");
 const repoInput = document.querySelector("#repoInput");
 const branchInput = document.querySelector("#branchInput");
@@ -48,9 +49,7 @@ const pathInput = document.querySelector("#pathInput");
 const tokenInput = document.querySelector("#tokenInput");
 const githubLoadBtn = document.querySelector("#githubLoadBtn");
 const githubStatus = document.querySelector("#githubStatus");
-const canvas = document.querySelector("#visualizer");
-const disc = document.querySelector(".disc");
-const ctx = canvas.getContext("2d");
+const coverArt = document.querySelector("#coverArt");
 const audioExtensions = new Set(["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus", "webm"]);
 const imageExtensions = new Set(["jpg", "jpeg", "png", "webp", "gif", "avif"]);
 const defaultGithubAlbums = [
@@ -62,6 +61,8 @@ const defaultGithubAlbums = [
 const playCountsKey = "taylorAlbumsPlayCounts";
 const lastPlayedKey = "taylorAlbumsLastPlayed";
 const favoritesKey = "taylorAlbumsFavorites";
+const githubCacheKey = "swiftMusicGithubCacheV1";
+const githubCacheMaxAgeMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 const mostPlayedLimit = 10;
 
 let tracks = [];
@@ -70,9 +71,7 @@ let isSeeking = false;
 let shuffle = false;
 let repeat = false;
 let audioContext;
-let analyser;
 let source;
-let frequencyData;
 let githubToken = "";
 let playCounts = readPlayCounts();
 let countedTrackId = "";
@@ -89,6 +88,22 @@ let favoritesOpen = false;
 let lastOpenedPanel = "";
 let lastMediaPositionUpdate = 0;
 let queueContext = { mode: "repo", label: "", indices: [] };
+
+function readGithubCache() {
+  try {
+    return JSON.parse(localStorage.getItem(githubCacheKey)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeGithubCache(cache) {
+  try {
+    localStorage.setItem(githubCacheKey, JSON.stringify(cache));
+  } catch {
+    // Ignore storage quota issues.
+  }
+}
 
 function setQueueContextRepo(label = "") {
   queueContext = { mode: "repo", label, indices: [] };
@@ -219,7 +234,7 @@ function installMediaActionHandlers() {
   });
 }
 
-audio.volume = Number(volume.value);
+audio.volume = 1;
 
 function makeId() {
   return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -486,6 +501,19 @@ async function loadTrack(index, autoplay = true) {
   trackMeta.textContent = track.source === "github"
     ? track.album
     : `${track.file.type || "Audio"} - ${track.size}`;
+  if (coverArt) {
+    const cover = track.coverUrl || "";
+    const coverWrap = coverArt.closest(".cover");
+    if (cover) {
+      coverArt.src = cover;
+      coverArt.hidden = false;
+      coverWrap?.classList.add("has-cover");
+    } else {
+      coverArt.removeAttribute("src");
+      coverArt.hidden = true;
+      coverWrap?.classList.remove("has-cover");
+    }
+  }
   statusText.textContent = autoplay ? "Now playing" : "Ready";
   installMediaActionHandlers();
   setMediaMetadata(track);
@@ -540,12 +568,8 @@ async function ensureAudioGraph() {
   if (audioContext) return;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   audioContext = new AudioContextClass();
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 128;
   source = audioContext.createMediaElementSource(audio);
-  source.connect(analyser);
-  analyser.connect(audioContext.destination);
-  frequencyData = new Uint8Array(analyser.frequencyBinCount);
+  source.connect(audioContext.destination);
 }
 
 async function playAudio() {
@@ -567,7 +591,6 @@ function setPlayState() {
   playIcon.innerHTML = playing
     ? '<path d="M8 5h3v14H8zM13 5h3v14h-3z"/>'
     : '<path d="m8 5 11 7-11 7V5Z"/>';
-  disc.classList.toggle("playing", playing);
   statusText.textContent = currentIndex === -1 ? "Choose audio files to begin" : playing ? "Now playing" : "Paused";
   document.body.classList.toggle("is-playing", playing);
   document.body.classList.toggle("has-track", currentIndex !== -1);
@@ -582,10 +605,13 @@ function positionFavoriteButton() {
     const collapsed = document.body.classList.contains("player-collapsed");
     if (collapsed) {
       titleActions.setAttribute("aria-hidden", "true");
-      const controls = document.querySelector(".controls");
-      if (!controls) return;
-      if (favoriteBtn.parentElement !== controls) {
-        controls.insertBefore(favoriteBtn, repeatBtn || null);
+      if (playerRightActions) {
+        playerRightActions.removeAttribute("aria-hidden");
+        if (favoriteBtn.parentElement !== playerRightActions) playerRightActions.appendChild(favoriteBtn);
+      } else {
+        const controls = document.querySelector(".controls");
+        if (!controls) return;
+        if (favoriteBtn.parentElement !== controls) controls.appendChild(favoriteBtn);
       }
       return;
     }
@@ -599,6 +625,41 @@ function positionFavoriteButton() {
     if (favoriteBtn.parentElement !== controls) {
       controls.insertBefore(favoriteBtn, repeatBtn || null);
     }
+  }
+}
+
+function positionMuteButton() {
+  if (!muteBtn) return;
+  const mobile = isMobileViewport();
+  const controls = document.querySelector(".controls");
+  if (!controls) return;
+
+  if (mobile) {
+    if (document.body.classList.contains("player-collapsed")) {
+      // Hidden by CSS while collapsed, but keep it out of the right-actions slot.
+      if (muteBtn.parentElement !== controls) controls.insertBefore(muteBtn, repeatBtn || null);
+      return;
+    }
+    // On mobile, keep mute immediately left of the heart wherever the heart lives.
+    const heartContainer = titleActions;
+    if (heartContainer && heartContainer !== controls) heartContainer.removeAttribute("aria-hidden");
+    const heart = favoriteBtn;
+    if (heart && heart.parentElement === heartContainer) {
+      if (muteBtn.parentElement !== heartContainer) heartContainer.insertBefore(muteBtn, heart);
+      else if (muteBtn.nextElementSibling !== heart) heartContainer.insertBefore(muteBtn, heart);
+      return;
+    }
+    // Fallback: keep it in controls near the end.
+    if (muteBtn.parentElement !== controls) controls.insertBefore(muteBtn, repeatBtn || null);
+    return;
+  }
+
+  // Desktop: park mute on the far right of the bottom panel.
+  if (playerRightActions) {
+    playerRightActions.removeAttribute("aria-hidden");
+    if (muteBtn.parentElement !== playerRightActions) playerRightActions.appendChild(muteBtn);
+  } else if (muteBtn.parentElement !== controls) {
+    controls.insertBefore(muteBtn, repeatBtn || null);
   }
 }
 
@@ -977,8 +1038,17 @@ async function collectGithubAudio(owner, repo, branch, path) {
 
   const response = await fetch(url, { headers: githubHeaders() });
   if (!response.ok) {
+    let message = "";
+    try {
+      const data = await response.json();
+      message = data?.message || "";
+    } catch {
+      // ignore
+    }
     if (response.status === 404) throw new Error("Repository or folder was not found.");
-    if (response.status === 401 || response.status === 403) throw new Error("GitHub refused access. Check the repo and token.");
+    if (response.status === 401) throw new Error("GitHub refused access. Check the repo and token.");
+    if (response.status === 403 && /rate limit/i.test(message)) throw new Error("GitHub API rate limit exceeded. Try again later.");
+    if (response.status === 403) throw new Error("GitHub refused access. Try again later.");
     throw new Error("GitHub could not load that folder.");
   }
 
@@ -1006,8 +1076,17 @@ async function collectGithubMedia(owner, repo, branch, path) {
 
   const response = await fetch(url, { headers: githubHeaders() });
   if (!response.ok) {
+    let message = "";
+    try {
+      const data = await response.json();
+      message = data?.message || "";
+    } catch {
+      // ignore
+    }
     if (response.status === 404) throw new Error("Repository or folder was not found.");
-    if (response.status === 401 || response.status === 403) throw new Error("GitHub refused access. Check the repo and token.");
+    if (response.status === 401) throw new Error("GitHub refused access. Check the repo and token.");
+    if (response.status === 403 && /rate limit/i.test(message)) throw new Error("GitHub API rate limit exceeded. Try again later.");
+    if (response.status === 403) throw new Error("GitHub refused access. Try again later.");
     throw new Error("GitHub could not load that folder.");
   }
 
@@ -1057,11 +1136,32 @@ async function loadGithubAlbumSource(sourceConfig) {
     githubStatus.textContent = "Enter a repository like owner/repo.";
     return 0;
   }
+  const cacheKey = `${owner}/${repo}::${branch || "default"}::${path || "/"}`;
 
   githubLoadBtn.disabled = true;
   githubStatus.textContent = `Looking through ${albumName}...`;
 
   try {
+    const cacheAtStart = readGithubCache();
+    const cached = cacheAtStart[cacheKey];
+    const now = Date.now();
+    if (cached && cached.tracks && now - (cached.ts || 0) < githubCacheMaxAgeMs) {
+      const cachedTracks = cached.tracks.map((item) => ({
+        ...item,
+        id: makeId()
+      }));
+      // Avoid duplicating the same repo load.
+      const alreadyLoaded = tracks.some((t) => t.source === "github" && t.repo === cached.repoName);
+      if (!alreadyLoaded) {
+        tracks = [...tracks, ...cachedTracks];
+        if (currentIndex === -1 && !sourceConfig.deferInitialLoad) loadTrack(0, false);
+        renderPlaylist();
+        renderHome();
+      }
+      githubStatus.textContent = `Loaded ${cachedTracks.length} tracks for ${albumName} (cached).`;
+      return cachedTracks.length;
+    }
+
     const { audioItems, imageItems } = await collectGithubMedia(owner, repo, branch, path);
     if (!audioItems.length) {
       githubStatus.textContent = "No audio files found in that folder.";
@@ -1089,6 +1189,10 @@ async function loadGithubAlbumSource(sourceConfig) {
     renderPlaylist();
     renderHome();
     githubStatus.textContent = `Added ${audioItems.length} ${audioItems.length === 1 ? "track" : "tracks"} from ${repoName}.`;
+
+    const cacheToWrite = readGithubCache();
+    cacheToWrite[cacheKey] = { ts: Date.now(), repoName, albumName, tracks: newTracks.map(({ id, ...rest }) => rest) };
+    writeGithubCache(cacheToWrite);
     return audioItems.length;
   } catch (error) {
     githubStatus.textContent = error.message;
@@ -1146,46 +1250,13 @@ function isMobileViewport() {
 function collapseMobilePlayer() {
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
   positionFavoriteButton();
+  positionMuteButton();
 }
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
   positionFavoriteButton();
-}
-
-function drawVisualizer() {
-  requestAnimationFrame(drawVisualizer);
-  const width = canvas.width;
-  const height = canvas.height;
-  ctx.clearRect(0, 0, width, height);
-
-  const bars = frequencyData?.length || 48;
-  if (analyser && frequencyData && !audio.paused) {
-    analyser.getByteFrequencyData(frequencyData);
-  }
-
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const baseRadius = width * 0.27;
-
-  for (let i = 0; i < bars; i += 1) {
-    const level = frequencyData ? frequencyData[i] / 255 : 0.12 + Math.sin(Date.now() / 500 + i) * 0.04;
-    const angle = (i / bars) * Math.PI * 2;
-    const barLength = 28 + level * 96;
-    const x1 = centerX + Math.cos(angle) * baseRadius;
-    const y1 = centerY + Math.sin(angle) * baseRadius;
-    const x2 = centerX + Math.cos(angle) * (baseRadius + barLength);
-    const y2 = centerY + Math.sin(angle) * (baseRadius + barLength);
-
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = i % 3 === 0 ? "#e7b75f" : i % 3 === 1 ? "#68c8ac" : "#db7d85";
-    ctx.globalAlpha = 0.38 + level * 0.55;
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  positionMuteButton();
 }
 
 fileInput.addEventListener("change", (event) => addFiles(event.target.files));
@@ -1242,12 +1313,14 @@ if (nowPlayingEl) {
   };
 
   const swipeZoneEls = [nowPlayingEl, document.querySelector(".timeline")].filter(Boolean);
+  const controlsEl = document.querySelector(".controls");
+  if (controlsEl) swipeZoneEls.push(controlsEl);
 
   if ("PointerEvent" in window) {
     swipeZoneEls.forEach((el) => el.addEventListener("pointerdown", (event) => {
       if (!isMobileViewport()) return;
       if (event.pointerType !== "touch") return;
-      if (event.target && event.target.closest && event.target.closest("#seek")) return;
+      if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
       swipeTracking = false;
       startSwipe(event.clientX, event.clientY);
       try {
@@ -1281,7 +1354,7 @@ if (nowPlayingEl) {
     // Fallback for older browsers.
     swipeZoneEls.forEach((el) => el.addEventListener("touchstart", (event) => {
       if (!isMobileViewport()) return;
-      if (event.target && event.target.closest && event.target.closest("#seek")) return;
+      if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
       const touch = event.touches[0];
       startSwipe(touch.clientX, touch.clientY);
     }, { passive: true }));
@@ -1328,6 +1401,14 @@ document.addEventListener("click", (event) => {
   }
 });
 
+// Expand collapsed player when the user taps anywhere on it (except direct control interactions).
+playerEl.addEventListener("click", (event) => {
+  if (!isMobileViewport()) return;
+  if (!document.body.classList.contains("player-collapsed")) return;
+  if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
+  expandMobilePlayer();
+});
+
 window.addEventListener("scroll", () => {
   if (!isMobileViewport()) return;
   if (window.scrollY <= 4) {
@@ -1338,7 +1419,10 @@ window.addEventListener("scroll", () => {
   lastScrollY = window.scrollY;
 }, { passive: true });
 
-window.addEventListener("resize", positionFavoriteButton);
+window.addEventListener("resize", () => {
+  positionFavoriteButton();
+  positionMuteButton();
+});
 
 if (clearBtn) {
   clearBtn.addEventListener("click", () => {
@@ -1366,11 +1450,13 @@ if (clearBtn) {
 
 githubForm.addEventListener("submit", loadGithubRepository);
 
-volume.addEventListener("input", () => {
-  audio.volume = Number(volume.value);
-  audio.muted = audio.volume === 0;
-  muteBtn.classList.toggle("active", audio.muted);
-});
+if (volume) {
+  volume.addEventListener("input", () => {
+    audio.volume = Number(volume.value);
+    audio.muted = audio.volume === 0;
+    muteBtn.classList.toggle("active", audio.muted);
+  });
+}
 
 seek.addEventListener("input", () => {
   isSeeking = true;
@@ -1458,6 +1544,6 @@ if ("serviceWorker" in navigator) {
 
 renderPlaylist();
 renderHome();
-drawVisualizer();
 loadDefaultGithubAlbums();
 positionFavoriteButton();
+positionMuteButton();

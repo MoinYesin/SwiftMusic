@@ -103,21 +103,18 @@ svg {
 
 .brand {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 30px minmax(0, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 6px;
 }
 
 .brand-mark {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
+  display: block;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
-  color: var(--ink);
+  object-fit: cover;
   background: linear-gradient(135deg, var(--amber), var(--rose));
-  font-size: 1.25rem;
-  font-weight: 950;
 }
 
 .brand strong,
@@ -131,7 +128,8 @@ svg {
 }
 
 .brand strong {
-  font-size: 0.98rem;
+  font-size: 0.9rem;
+  letter-spacing: 0;
 }
 
 .brand span,
@@ -178,7 +176,7 @@ svg {
   grid-row: 1;
   min-width: 0;
   overflow: auto;
-  padding: 24px;
+  padding: 22px;
 }
 
 .home-hero {
@@ -186,10 +184,10 @@ svg {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 20px;
-  min-height: 190px;
+  min-height: 160px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 24px;
+  padding: 20px;
   background:
     radial-gradient(circle at 82% 12%, rgba(241, 191, 102, 0.32), transparent 26%),
     linear-gradient(135deg, rgba(121, 167, 255, 0.18), rgba(222, 127, 139, 0.16)),
@@ -213,8 +211,8 @@ p {
 
 h1 {
   margin-bottom: 0;
-  font-size: clamp(2.8rem, 6.5vw, 6.4rem);
-  line-height: 0.9;
+  font-size: clamp(2.4rem, 5.7vw, 5.4rem);
+  line-height: 0.94;
 }
 
 h2 {
@@ -225,7 +223,7 @@ h2 {
   max-width: 620px;
   margin: 12px 0 0;
   color: var(--muted);
-  font-size: clamp(1rem, 2vw, 1.18rem);
+  font-size: clamp(0.98rem, 1.8vw, 1.12rem);
   line-height: 1.5;
 }
 
@@ -242,7 +240,7 @@ h2 {
 .home-stats span {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 7px 11px;
   background: rgba(10, 12, 15, 0.32);
 }
 
@@ -690,11 +688,16 @@ h2 {
   align-items: end;
 }
 
+.queue-head h2:empty {
+  display: none;
+}
+
 .player {
   grid-column: 2 / -1;
   grid-row: 2;
   display: grid;
-  grid-template-columns: minmax(270px, 0.9fr) minmax(320px, 1.15fr) minmax(230px, 0.7fr);
+  grid-template-columns: minmax(260px, 1fr) auto minmax(60px, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
   gap: 18px;
   min-height: 96px;
@@ -706,6 +709,8 @@ h2 {
 }
 
 .now-playing {
+  grid-column: 1;
+  grid-row: 1 / -1;
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   align-items: center;
@@ -728,34 +733,16 @@ h2 {
     #16191b;
 }
 
-#visualizer {
+.cover img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
 }
 
-.disc {
-  position: relative;
-  width: 46%;
-  aspect-ratio: 1;
-  border: 1px solid rgba(247, 241, 232, 0.22);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, var(--surface) 0 14%, rgba(247, 241, 232, 0.14) 15% 16%, transparent 17%),
-    repeating-radial-gradient(circle, rgba(247, 241, 232, 0.12) 0 1px, transparent 1px 9px),
-    linear-gradient(135deg, rgba(247, 241, 232, 0.14), rgba(0, 0, 0, 0.38));
-  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.36);
-}
-
-.disc.playing {
-  animation: spin 7s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+.cover:not(.has-cover) img {
+  display: none;
 }
 
 .track-copy {
@@ -806,11 +793,14 @@ h2 {
 
 .timeline {
   grid-column: 2;
-  align-self: end;
+  grid-row: 1;
+  justify-self: center;
+  align-self: center;
   gap: 10px;
   color: var(--muted);
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
+  width: min(720px, 100%);
 }
 
 input[type="range"] {
@@ -820,10 +810,25 @@ input[type="range"] {
 
 .controls {
   grid-column: 2;
-  grid-row: 1;
+  grid-row: 2;
+  justify-self: center;
   justify-content: center;
-  gap: 10px;
-  padding-bottom: 22px;
+  gap: 8px;
+  padding-top: 10px;
+  width: min(720px, 100%);
+}
+
+.player-right-actions {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.player-right-actions .icon-button {
+  width: 40px;
+  height: 40px;
 }
 
 .icon-button,
@@ -859,6 +864,16 @@ input[type="range"] {
 .icon-button.active {
   border-color: var(--amber);
   color: var(--amber);
+}
+
+.controls #muteBtn.active {
+  border-color: rgba(222, 127, 139, 0.75);
+  color: var(--rose);
+}
+
+.player-right-actions #muteBtn.active {
+  border-color: rgba(222, 127, 139, 0.75);
+  color: var(--rose);
 }
 
 .utility {
@@ -1036,6 +1051,23 @@ body.dragging .player {
     overflow: auto;
   }
 
+  .nav-item {
+    min-height: 34px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(10, 12, 15, 0.22);
+    font-size: 0.82rem;
+    font-weight: 850;
+    white-space: nowrap;
+  }
+
+  .nav-item.active,
+  .nav-item:hover {
+    border-color: rgba(115, 208, 173, 0.55);
+    background: var(--surface-2);
+  }
+
   .sidebar-card {
     display: none;
   }
@@ -1046,8 +1078,8 @@ body.dragging .player {
 
   .home-hero {
     grid-template-columns: 1fr;
-    min-height: 110px;
-    padding: 16px;
+    min-height: 102px;
+    padding: 14px;
   }
 
   .hero-copy {
@@ -1065,6 +1097,7 @@ body.dragging .player {
     bottom: 0;
     z-index: 6;
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
     gap: 9px;
     transition: transform 180ms ease;
   }
@@ -1079,16 +1112,19 @@ body.dragging .player {
     touch-action: pan-x;
   }
 
-  .player::before {
-    content: "";
-    justify-self: center;
-    width: 46px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.16);
+  .player .controls {
+    touch-action: pan-x;
   }
 
-  body.has-track:not(.queue-open) .player::after {
+  .player-right-actions {
+    display: none;
+  }
+
+  .player::before {
+    content: none;
+  }
+
+  body.has-track:not(.queue-open):not(.player-collapsed) .player::after {
     content: "Swipe up for queue";
     justify-self: center;
     margin-top: -2px;
@@ -1183,12 +1219,58 @@ body.dragging .player {
     padding: 8px 12px 10px;
   }
 
-  body.player-collapsed .player .now-playing,
   body.player-collapsed .player .utility {
     opacity: 0;
     pointer-events: none;
     max-height: 0;
     overflow: hidden;
+  }
+
+  body.player-collapsed .player {
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto;
+    align-items: center;
+  }
+
+  body.player-collapsed .player .now-playing {
+    grid-column: 1;
+    grid-row: 1;
+    opacity: 1;
+    pointer-events: auto;
+    max-height: none;
+  }
+
+  body.player-collapsed .player .now-playing .track-copy {
+    display: none;
+  }
+
+  body.player-collapsed .player .now-playing .cover {
+    width: 46px;
+    border-radius: 10px;
+  }
+
+  body.player-collapsed .player .timeline {
+    display: none;
+  }
+
+  body.player-collapsed .player .controls {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: center;
+    padding-top: 0;
+  }
+
+  body.player-collapsed .player-right-actions {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1;
+    justify-content: flex-end;
+  }
+
+  body.player-collapsed #shuffleBtn,
+  body.player-collapsed #repeatBtn,
+  body.player-collapsed #muteBtn {
+    display: none;
   }
 
   body.player-collapsed .player .controls {
@@ -1205,6 +1287,10 @@ body.dragging .player {
     grid-column: 1;
     grid-row: auto;
     padding-bottom: 0;
+  }
+
+  .controls {
+    padding-top: 0;
   }
 
   .utility {
@@ -1233,12 +1319,12 @@ body.dragging .player {
   }
 
   .home-hero {
-    min-height: 104px;
-    padding: 14px;
+    min-height: 96px;
+    padding: 12px;
   }
 
   h1 {
-    font-size: clamp(2.35rem, 14.5vw, 4.2rem);
+    font-size: clamp(2.05rem, 13.4vw, 3.9rem);
   }
 
   .song-grid {
