@@ -956,6 +956,11 @@ input[type="range"] {
   color: var(--rose);
 }
 
+#favoriteBtn.active {
+  border-color: rgba(222, 127, 139, 0.75);
+  color: var(--rose);
+}
+
 .utility {
   justify-content: end;
   gap: 11px;
@@ -1229,6 +1234,7 @@ body.dragging .player {
     position: fixed;
     inset: 0;
     z-index: 12;
+    border: none;
     border-radius: 0;
     height: 100vh;
     min-height: 100vh;
