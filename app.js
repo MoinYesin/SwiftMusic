@@ -42,6 +42,12 @@ const queueEl = document.querySelector(".queue");
 const nowPlayingEl = document.querySelector(".now-playing");
 const titleActions = document.querySelector("#titleActions");
 const playerRightActions = document.querySelector("#playerRightActions");
+const queueToggleBtn = document.querySelector("#queueToggleBtn");
+const playerMinimizeBtn = document.querySelector("#playerMinimizeBtn");
+const playerFullActions = document.querySelector("#playerFullActions");
+const fullActionsRow = document.querySelector("#fullActionsRow");
+const fullActionsLeft = document.querySelector("#fullActionsLeft");
+const fullActionsRight = document.querySelector("#fullActionsRight");
 const githubForm = document.querySelector("#githubForm");
 const repoInput = document.querySelector("#repoInput");
 const branchInput = document.querySelector("#branchInput");
@@ -485,6 +491,10 @@ async function loadTrack(index, autoplay = true) {
   currentIndex = index;
   countedTrackId = "";
   document.body.classList.add("has-track");
+  refreshQueueToggleVisibility();
+  if (isMobileViewport() && !document.body.classList.contains("player-fullscreen")) {
+    document.body.classList.add("player-collapsed");
+  }
   const track = tracks[currentIndex];
   statusText.textContent = "Loading";
   let playableUrl;
@@ -602,6 +612,13 @@ function positionFavoriteButton() {
   if (!favoriteBtn || !titleActions) return;
   const mobile = isMobileViewport();
   if (mobile) {
+    if (document.body.classList.contains("player-fullscreen")) {
+      titleActions.setAttribute("aria-hidden", "true");
+      if (fullActionsRight && favoriteBtn.parentElement !== fullActionsRight) {
+        fullActionsRight.appendChild(favoriteBtn);
+      }
+      return;
+    }
     const collapsed = document.body.classList.contains("player-collapsed");
     if (collapsed) {
       titleActions.setAttribute("aria-hidden", "true");
@@ -635,6 +652,15 @@ function positionMuteButton() {
   if (!controls) return;
 
   if (mobile) {
+    if (document.body.classList.contains("player-fullscreen")) {
+      if (fullActionsRight && muteBtn.parentElement !== fullActionsRight) {
+        // Keep mute to the left of heart in the right cluster.
+        const heart = favoriteBtn;
+        if (heart && heart.parentElement === fullActionsRight) fullActionsRight.insertBefore(muteBtn, heart);
+        else fullActionsRight.appendChild(muteBtn);
+      }
+      return;
+    }
     if (document.body.classList.contains("player-collapsed")) {
       // Hidden by CSS while collapsed, but keep it out of the right-actions slot.
       if (muteBtn.parentElement !== controls) controls.insertBefore(muteBtn, repeatBtn || null);
@@ -718,6 +744,7 @@ function removeTrack(id) {
 function renderPlaylist() {
   playlistEl.innerHTML = "";
   const queueItems = currentQueueTracks();
+  refreshQueueToggleVisibility();
 
   queueItems.forEach(({ track, index }, queueIndex) => {
     const li = document.createElement("li");
@@ -1158,6 +1185,7 @@ async function loadGithubAlbumSource(sourceConfig) {
         renderPlaylist();
         renderHome();
       }
+      refreshQueueToggleVisibility();
       githubStatus.textContent = `Loaded ${cachedTracks.length} tracks for ${albumName} (cached).`;
       return cachedTracks.length;
     }
@@ -1188,6 +1216,7 @@ async function loadGithubAlbumSource(sourceConfig) {
     if (currentIndex === -1 && !sourceConfig.deferInitialLoad) loadTrack(0, false);
     renderPlaylist();
     renderHome();
+    refreshQueueToggleVisibility();
     githubStatus.textContent = `Added ${audioItems.length} ${audioItems.length === 1 ? "track" : "tracks"} from ${repoName}.`;
 
     const cacheToWrite = readGithubCache();
@@ -1226,9 +1255,11 @@ async function loadDefaultGithubAlbums() {
     await restoreLastPlayedTrack();
     libraryStatus.textContent = `Loaded ${loadedCount} ${loadedCount === 1 ? "song" : "songs"} across ${defaultGithubAlbums.length} albums.`;
     githubStatus.textContent = failures.length ? failures.join(" | ") : "Albums loaded.";
+    refreshQueueToggleVisibility();
   } else {
     libraryStatus.textContent = failures.length ? failures.join(" | ") : "No audio files found in the GitHub albums.";
     githubStatus.textContent = libraryStatus.textContent;
+    refreshQueueToggleVisibility();
   }
 }
 
@@ -1248,15 +1279,20 @@ function isMobileViewport() {
 }
 
 function collapseMobilePlayer() {
+  if (isMobileViewport()) document.body.classList.remove("player-fullscreen");
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
+  positionFullscreenActionRow();
   positionFavoriteButton();
   positionMuteButton();
+  positionQueueToggleButton();
 }
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
+  positionFullscreenActionRow();
   positionFavoriteButton();
   positionMuteButton();
+  positionQueueToggleButton();
 }
 
 fileInput.addEventListener("change", (event) => addFiles(event.target.files));
@@ -1295,91 +1331,66 @@ muteBtn.addEventListener("click", () => {
   muteBtn.classList.toggle("active", audio.muted);
 });
 
-// Mobile queue gesture: only from the now-playing strip.
-if (nowPlayingEl) {
-  const startSwipe = (clientX, clientY) => {
-    swipeStartY = clientY;
-    swipeStartX = clientX;
-    swipeTracking = true;
-    expandMobilePlayer();
-  };
-
-  const maybeOpenQueue = (clientX, clientY) => {
-    const dy = swipeStartY - clientY;
-    const dx = Math.abs(clientX - swipeStartX);
-    if (dy > 55 && dx < 80 && isMobileViewport()) {
-      document.body.classList.add("queue-open");
-    }
-  };
-
-  const swipeZoneEls = [nowPlayingEl, document.querySelector(".timeline")].filter(Boolean);
-  const controlsEl = document.querySelector(".controls");
-  if (controlsEl) swipeZoneEls.push(controlsEl);
-
-  if ("PointerEvent" in window) {
-    swipeZoneEls.forEach((el) => el.addEventListener("pointerdown", (event) => {
-      if (!isMobileViewport()) return;
-      if (event.pointerType !== "touch") return;
-      if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
-      swipeTracking = false;
-      startSwipe(event.clientX, event.clientY);
-      try {
-        el.setPointerCapture(event.pointerId);
-      } catch {
-        // Ignore.
-      }
-    }, { passive: true }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("pointermove", (event) => {
-      if (!swipeTracking || !isMobileViewport()) return;
-      if (event.pointerType !== "touch") return;
-      const dy = event.clientY - swipeStartY;
-      const dx = event.clientX - swipeStartX;
-      if (dy < -6 && Math.abs(dy) > Math.abs(dx)) {
-        event.preventDefault();
-      }
-    }, { passive: false }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("pointerup", (event) => {
-      if (!swipeTracking) return;
-      swipeTracking = false;
-      if (event.pointerType !== "touch") return;
-      maybeOpenQueue(event.clientX, event.clientY);
-    }, { passive: true }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("pointercancel", () => {
-      swipeTracking = false;
-    }, { passive: true }));
-  } else {
-    // Fallback for older browsers.
-    swipeZoneEls.forEach((el) => el.addEventListener("touchstart", (event) => {
-      if (!isMobileViewport()) return;
-      if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
-      const touch = event.touches[0];
-      startSwipe(touch.clientX, touch.clientY);
-    }, { passive: true }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("touchmove", (event) => {
-      if (!swipeTracking || !isMobileViewport()) return;
-      const touch = event.touches[0];
-      const dy = touch.clientY - swipeStartY;
-      const dx = touch.clientX - swipeStartX;
-      if (dy < -6 && Math.abs(dy) > Math.abs(dx)) {
-        event.preventDefault();
-      }
-    }, { passive: false }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("touchend", (event) => {
-      if (!swipeTracking) return;
-      swipeTracking = false;
-      const touch = event.changedTouches[0];
-      maybeOpenQueue(touch.clientX, touch.clientY);
-    }, { passive: true }));
-
-    swipeZoneEls.forEach((el) => el.addEventListener("touchcancel", () => {
-      swipeTracking = false;
-    }, { passive: true }));
+function setQueueOpen(open) {
+  document.body.classList.toggle("queue-open", Boolean(open));
+  if (queueToggleBtn) {
+    queueToggleBtn.setAttribute("aria-label", open ? "Close queue" : "Open queue");
+    queueToggleBtn.setAttribute("title", open ? "Close queue" : "Queue");
+    queueToggleBtn.classList.toggle("active", Boolean(open));
   }
+}
+
+function refreshQueueToggleVisibility() {
+  if (!queueToggleBtn) return;
+  const show = isMobileViewport()
+    && (document.body.classList.contains("has-track") || tracks.length > 0)
+    && document.body.classList.contains("player-fullscreen");
+  queueToggleBtn.hidden = !show;
+  positionQueueToggleButton();
+}
+
+function positionQueueToggleButton() {
+  if (!queueToggleBtn) return;
+  if (!isMobileViewport()) return;
+  if (!document.body.classList.contains("player-fullscreen")) return;
+  if (fullActionsLeft && queueToggleBtn.parentElement !== fullActionsLeft) {
+    fullActionsLeft.appendChild(queueToggleBtn);
+  }
+}
+
+function positionFullscreenActionRow() {
+  if (!fullActionsRow) return;
+  const show = isMobileViewport() && document.body.classList.contains("player-fullscreen");
+  fullActionsRow.hidden = !show;
+}
+
+function openFullscreenPlayer() {
+  if (!isMobileViewport()) return;
+  document.body.classList.add("player-fullscreen");
+  document.body.classList.remove("player-collapsed");
+  positionFullscreenActionRow();
+  positionFavoriteButton();
+  positionMuteButton();
+  positionQueueToggleButton();
+  refreshQueueToggleVisibility();
+}
+
+function closeFullscreenPlayer() {
+  if (!isMobileViewport()) return;
+  document.body.classList.remove("player-fullscreen");
+  document.body.classList.add("player-collapsed");
+  positionFullscreenActionRow();
+  positionFavoriteButton();
+  positionMuteButton();
+  positionQueueToggleButton();
+  refreshQueueToggleVisibility();
+}
+
+if (queueToggleBtn) {
+  queueToggleBtn.addEventListener("click", () => {
+    if (!isMobileViewport()) return;
+    setQueueOpen(!document.body.classList.contains("queue-open"));
+  });
 }
 
 queueEl.addEventListener("touchstart", (event) => {
@@ -1389,16 +1400,21 @@ queueEl.addEventListener("touchstart", (event) => {
 queueEl.addEventListener("touchend", (event) => {
   const endY = event.changedTouches[0].clientY;
   if (endY - swipeStartY > 55 && window.matchMedia("(max-width: 900px)").matches) {
-    document.body.classList.remove("queue-open");
+    setQueueOpen(false);
   }
 }, { passive: true });
 
 document.addEventListener("click", (event) => {
   if (!isMobileViewport()) return;
-  if (!playerEl.contains(event.target) && !queueEl.contains(event.target)) {
-    collapseMobilePlayer();
-    document.body.classList.remove("queue-open");
+  if (playerEl.contains(event.target) || queueEl.contains(event.target)) return;
+
+  if (document.body.classList.contains("queue-open")) {
+    setQueueOpen(false);
+    // When the expanded player is open, keep it open and only dismiss the queue.
+    if (document.body.classList.contains("player-fullscreen")) return;
   }
+
+  collapseMobilePlayer();
 });
 
 // Expand collapsed player when the user taps anywhere on it (except direct control interactions).
@@ -1406,14 +1422,19 @@ playerEl.addEventListener("click", (event) => {
   if (!isMobileViewport()) return;
   if (!document.body.classList.contains("player-collapsed")) return;
   if (event.target && event.target.closest && event.target.closest("button, input, a, label")) return;
-  expandMobilePlayer();
+  openFullscreenPlayer();
 });
+
+if (playerMinimizeBtn) {
+  playerMinimizeBtn.addEventListener("click", () => {
+    closeFullscreenPlayer();
+    setQueueOpen(false);
+  });
+}
 
 window.addEventListener("scroll", () => {
   if (!isMobileViewport()) return;
-  if (window.scrollY <= 4) {
-    expandMobilePlayer();
-  } else if (Math.abs(window.scrollY - lastScrollY) > 8) {
+  if (Math.abs(window.scrollY - lastScrollY) > 8) {
     collapseMobilePlayer();
   }
   lastScrollY = window.scrollY;
@@ -1422,6 +1443,10 @@ window.addEventListener("scroll", () => {
 window.addEventListener("resize", () => {
   positionFavoriteButton();
   positionMuteButton();
+  refreshQueueToggleVisibility();
+  positionQueueToggleButton();
+  positionFullscreenActionRow();
+  if (!isMobileViewport()) document.body.classList.remove("player-fullscreen");
 });
 
 if (clearBtn) {
@@ -1547,3 +1572,5 @@ renderHome();
 loadDefaultGithubAlbums();
 positionFavoriteButton();
 positionMuteButton();
+refreshQueueToggleVisibility();
+positionFullscreenActionRow();

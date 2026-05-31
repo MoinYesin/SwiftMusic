@@ -564,7 +564,8 @@ h2 {
 .album-song-row strong {
   display: block;
   color: var(--text);
-  font-size: 0.98rem;
+  font-size: 0.92rem;
+  font-weight: 750;
 }
 
 .song-row>span:last-child>span,
@@ -572,6 +573,9 @@ h2 {
   display: block;
   margin-top: 3px;
   overflow: hidden;
+  color: var(--soft);
+  font-size: 0.78rem;
+  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -626,14 +630,29 @@ h2 {
 
 .track-title {
   display: block;
-  font-weight: 850;
+  font-size: 0.92rem;
+  font-weight: 760;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .track small {
   display: block;
   margin-top: 3px;
   overflow: hidden;
-  color: var(--muted);
+  color: var(--soft);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-row strong,
+.album-song-row strong,
+.song-row>span:last-child>span,
+.album-song-row>span:last-child>span {
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -708,9 +727,40 @@ h2 {
   display: none;
 }
 
+.player-fullbar {
+  display: none;
+}
+
+.full-actions-row {
+  display: none;
+  min-height: 0;
+}
+
+.full-actions-left,
+.full-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.full-actions-left {
+  justify-content: flex-start;
+}
+
+.full-actions-right {
+  justify-content: flex-end;
+}
+
+.full-actions-row .icon-button,
+.full-actions-row .queue-toggle {
+  width: 40px;
+  height: 40px;
+}
+
 .now-playing {
   grid-column: 1;
   grid-row: 1 / -1;
+  position: relative;
   display: grid;
   grid-template-columns: 62px minmax(0, 1fr);
   align-items: center;
@@ -829,6 +879,36 @@ input[type="range"] {
 .player-right-actions .icon-button {
   width: 40px;
   height: 40px;
+}
+
+.queue-toggle {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 10;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(20, 23, 27, 0.92);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  display: none;
+  place-items: center;
+}
+
+.queue-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+.queue-toggle:active {
+  transform: translateY(1px);
+}
+
+.queue-toggle.active {
+  border-color: rgba(115, 208, 173, 0.6);
+  color: var(--mint);
 }
 
 .icon-button,
@@ -1102,6 +1182,19 @@ body.dragging .player {
     transition: transform 180ms ease;
   }
 
+  .player-fullbar {
+    display: none;
+  }
+
+  .queue-toggle {
+    display: grid;
+    right: 10px;
+    bottom: 10px;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+
   /* Prevent page scroll when swiping on the now-playing strip. */
   .player .now-playing {
     touch-action: pan-x;
@@ -1125,15 +1218,134 @@ body.dragging .player {
   }
 
   body.has-track:not(.queue-open):not(.player-collapsed) .player::after {
-    content: "Swipe up for queue";
-    justify-self: center;
-    margin-top: -2px;
-    color: var(--soft);
-    font-size: 0.76rem;
-    font-weight: 850;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    content: none;
   }
+
+  body.player-fullscreen {
+    overflow: hidden;
+  }
+
+  body.player-fullscreen .player {
+    position: fixed;
+    inset: 0;
+    z-index: 12;
+    border-radius: 0;
+    height: 100vh;
+    min-height: 100vh;
+    padding: 16px 16px 24px;
+    background:
+      radial-gradient(circle at 80% 12%, rgba(241, 191, 102, 0.22), transparent 35%),
+      linear-gradient(180deg, rgba(121, 167, 255, 0.12), rgba(13, 15, 18, 0.85) 70%),
+      rgba(20, 23, 27, 0.98);
+    backdrop-filter: blur(18px);
+  }
+
+
+  body.player-fullscreen .player-fullbar {
+    display: grid;
+    grid-template-columns: 44px 1fr 44px;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px 10px;
+  }
+
+  .player-fullbar-title {
+    text-align: center;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .player-fullbar-actions {
+    display: grid;
+    justify-content: end;
+  }
+
+  body.player-fullscreen .player-fullbar-actions {
+    display: none;
+  }
+
+  body.player-fullscreen .now-playing {
+    grid-column: 1;
+    grid-row: auto;
+    width: 100%;
+    margin-top: 8px;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+
+  body.player-fullscreen .now-playing .cover {
+    width: min(78vw, 420px);
+    border-radius: 14px;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  body.player-fullscreen .now-playing .track-copy {
+    width: min(520px, 100%);
+    position: relative;
+  }
+
+  body.player-fullscreen .title-row {
+    justify-content: center;
+    text-align: center;
+  }
+
+  body.player-fullscreen .title-actions {
+    position: absolute;
+    right: 0;
+  }
+
+  body.player-fullscreen .track-copy h2 {
+    font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  body.player-fullscreen #trackMeta {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--muted);
+  }
+
+  body.player-fullscreen .timeline {
+    width: min(560px, 100%);
+    margin: 10px auto 0;
+  }
+
+  body.player-fullscreen .full-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(560px, 100%);
+    margin: 8px auto 0;
+  }
+
+  body.player-fullscreen .controls {
+    width: min(560px, 100%);
+    margin: 4px auto 0;
+  }
+
+  body.player-fullscreen .player-right-actions {
+    display: none;
+  }
+
+  body.player-fullscreen .queue-toggle {
+    position: static;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+  }
+
+  body.player-fullscreen .now-playing .queue-toggle {
+    display: none;
+  }
+
 
   .queue {
     position: fixed;
@@ -1176,19 +1388,14 @@ body.dragging .player {
     pointer-events: auto;
   }
 
-  body:not(.has-track) .queue {
-    position: static;
-    transform: none;
-    opacity: 1;
-    pointer-events: auto;
-    max-height: none;
-    padding: 14px;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
+  body.player-fullscreen .queue {
+    z-index: 13;
   }
 
-  body:not(.has-track)::after {
-    content: none;
+  body:not(.has-track):not(.queue-open) .queue {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
   }
 
   body.queue-open::after {
@@ -1197,6 +1404,11 @@ body.dragging .player {
     inset: 0;
     z-index: 8;
     background: rgba(0, 0, 0, 0.44);
+  }
+
+  body.player-fullscreen.queue-open::after {
+    z-index: 12;
+    background: rgba(0, 0, 0, 0.55);
   }
 
   .queue-head {
@@ -1249,6 +1461,10 @@ body.dragging .player {
     border-radius: 10px;
   }
 
+  body.player-collapsed .player .now-playing .queue-toggle {
+    display: none;
+  }
+
   body.player-collapsed .player .timeline {
     display: none;
   }
@@ -1265,6 +1481,19 @@ body.dragging .player {
     grid-column: 3;
     grid-row: 1;
     justify-content: flex-end;
+    gap: 8px;
+  }
+
+  body.player-collapsed .player-right-actions .queue-toggle {
+    position: static;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+  }
+
+  body.player-collapsed .player .now-playing .queue-toggle {
+    display: none;
   }
 
   body.player-collapsed #shuffleBtn,
