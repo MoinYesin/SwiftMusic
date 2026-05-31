@@ -1,5 +1,5 @@
 /* Minimal offline shell for installability. */
-const CACHE = "taylor-stream-v3.2";
+const CACHE = "taylor-stream-v4";
 
 const ASSETS = [
   "./",
