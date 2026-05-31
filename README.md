@@ -194,8 +194,8 @@ const CACHE = "taylor-stream-v2";
 
 Add screenshots here.
 
-![Home](screenshots/home.png)
-![Player](screenshots/player.png)
+![Home](screenshots/home.jpg)
+![Player](screenshots/player.jpg)
 
 ---
 
