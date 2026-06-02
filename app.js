@@ -1,4 +1,4 @@
-const audio = document.querySelector("#audio");
+﻿const audio = document.querySelector("#audio");
 const fileInput = document.querySelector("#fileInput");
 const playlistEl = document.querySelector("#playlist");
 const emptyState = document.querySelector("#emptyState");
@@ -13,12 +13,21 @@ const favoritesMeta = document.querySelector("#favoritesMeta");
 const favoritesPreview = document.querySelector("#favoritesPreview");
 const favoritesDetail = document.querySelector("#favoritesDetail");
 const favoritesDetailMeta = document.querySelector("#favoritesDetailMeta");
+const favoritesDetailArt = document.querySelector("#favoritesDetailArt");
+const favoritesDetailDescription = document.querySelector("#favoritesDetailDescription");
 const favoritesSongList = document.querySelector("#favoritesSongList");
+const closeFavoritesDetailBtn = document.querySelector("#closeFavoritesDetailBtn");
 const songGrid = document.querySelector("#songGrid");
+const songsHeading = document.querySelector("#songsHeading");
+const searchInput = document.querySelector("#searchInput");
+const searchPanel = document.querySelector("#searchPanel");
 const albumDetail = document.querySelector("#albumDetail");
 const albumDetailTitle = document.querySelector("#albumDetailTitle");
 const albumDetailMeta = document.querySelector("#albumDetailMeta");
+const albumDetailArt = document.querySelector("#albumDetailArt");
+const albumDetailDescription = document.querySelector("#albumDetailDescription");
 const albumSongList = document.querySelector("#albumSongList");
+const closeAlbumDetailBtn = document.querySelector("#closeAlbumDetailBtn");
 const playAlbumBtn = document.querySelector("#playAlbumBtn");
 const shuffleAllBtn = document.querySelector("#shuffleAllBtn");
 const statusText = document.querySelector("#statusText");
@@ -35,6 +44,7 @@ const nextBtn = document.querySelector("#nextBtn");
 const shuffleBtn = document.querySelector("#shuffleBtn");
 const favoriteBtn = document.querySelector("#favoriteBtn");
 const repeatBtn = document.querySelector("#repeatBtn");
+const lyricsBtn = document.querySelector("#lyricsBtn");
 const muteBtn = document.querySelector("#muteBtn");
 const clearBtn = document.querySelector("#clearBtn");
 const playerEl = document.querySelector(".player");
@@ -43,6 +53,12 @@ const nowPlayingEl = document.querySelector(".now-playing");
 const titleActions = document.querySelector("#titleActions");
 const playerRightActions = document.querySelector("#playerRightActions");
 const queueToggleBtn = document.querySelector("#queueToggleBtn");
+const lyricsPanel = document.querySelector("#lyricsPanel");
+const closeLyricsBtn = document.querySelector("#closeLyricsBtn");
+const lyricsPanelTitle = document.querySelector("#lyricsPanelTitle");
+const lyricsPanelMeta = document.querySelector("#lyricsPanelMeta");
+const lyricsStatus = document.querySelector("#lyricsStatus");
+const lyricsText = document.querySelector("#lyricsText");
 const playerMinimizeBtn = document.querySelector("#playerMinimizeBtn");
 const playerFullActions = document.querySelector("#playerFullActions");
 const fullActionsRow = document.querySelector("#fullActionsRow");
@@ -70,6 +86,13 @@ const favoritesKey = "taylorAlbumsFavorites";
 const githubCacheKey = "swiftMusicGithubCacheV1";
 const githubCacheMaxAgeMs = 1000 * 60 * 60 * 24 * 14; // 14 days
 const mostPlayedLimit = 10;
+const lyricsCacheKey = "swiftMusicLyricsCacheV1";
+const albumNotes = {
+  "Midnights": "The Moonstone Blue editions center the 13-song album around collectible jackets and a lyric booklet, giving the era a polished midnight-blue finish.",
+  "Reputation": "The official reputation shop keeps the era wrapped in black, snake-print details, and the album logo, matching the darker edge of the record.",
+  "1989 TV": "The 1989 (Taylor's Version) editions list 21 songs, including 5 From The Vault tracks, with collectible sleeves, a gatefold jacket, and a poster.",
+  "Lover": "The official digital album presents 18 songs, including Cruel Summer, Lover, and The Archer, and keeps the era bright, glossy, and pop-forward."
+};
 
 let tracks = [];
 let currentIndex = -1;
@@ -94,6 +117,10 @@ let favoritesOpen = false;
 let lastOpenedPanel = "";
 let lastMediaPositionUpdate = 0;
 let queueContext = { mode: "repo", label: "", indices: [] };
+let searchQuery = "";
+let lyricsOpen = false;
+let lyricsLoading = false;
+let lyricsTrackKey = "";
 
 function readGithubCache() {
   try {
@@ -111,8 +138,41 @@ function writeGithubCache(cache) {
   }
 }
 
+function readLyricsCache() {
+  try {
+    return JSON.parse(localStorage.getItem(lyricsCacheKey)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLyricsCache(cache) {
+  try {
+    localStorage.setItem(lyricsCacheKey, JSON.stringify(cache));
+  } catch {
+    // Ignore storage quota issues.
+  }
+}
+
 function setQueueContextRepo(label = "") {
   queueContext = { mode: "repo", label, indices: [] };
+}
+
+function setDetailWindowState() {
+  const detailOpen = Boolean(selectedAlbumName || favoritesOpen);
+  document.body.classList.toggle("detail-open", detailOpen);
+  document.body.classList.toggle("album-window-open", Boolean(selectedAlbumName));
+  document.body.classList.toggle("favorites-window-open", favoritesOpen);
+
+  if (detailOpen) {
+    setQueueOpen(false);
+  }
+
+  positionFavoriteButton();
+  positionMuteButton();
+  positionQueueToggleButton();
+  positionLyricsButton();
+  updateLyricsButtonState();
 }
 
 function setQueueContextList(label, indices, currentTrackIndex) {
@@ -360,6 +420,307 @@ function playCountFor(track) {
   return playCounts[track.key] || 0;
 }
 
+function normalizeSearchQuery(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function trackSearchText(track) {
+  return [
+    track.title,
+    track.album,
+    track.repo,
+    track.size,
+    track.path
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function trackTitleMatchesSearch(track, query) {
+  if (!query) return false;
+  return track.title.trim().toLowerCase() === query;
+}
+
+function albumMatchesSearch(album, query) {
+  if (!query) return true;
+  if (album.name.toLowerCase().includes(query)) return true;
+  return album.tracks.some(({ track }) => trackSearchText(track).includes(query));
+}
+
+function lyricsLookupForTrack(track) {
+  if (!track) return { artist: "", title: "" };
+  const artist = track.artist || (track.source === "github" ? "Taylor Swift" : "");
+  const title = track.title || "";
+  return { artist: artist.trim(), title: title.trim() };
+}
+
+function albumDescription(albumName) {
+  return albumNotes[albumName] || "A carefully grouped album view with its own artwork, quick summary, and the full song list below.";
+}
+
+function renderAlbumArtwork(target, album) {
+  if (!target) return;
+  target.innerHTML = "";
+  if (album?.coverUrl) {
+    target.style.background = "";
+    target.classList.add("has-cover");
+    const image = document.createElement("img");
+    image.src = album.coverUrl;
+    image.alt = `${album.name} cover art`;
+    image.loading = "lazy";
+    image.hidden = false;
+    target.append(image);
+    return;
+  }
+  target.classList.remove("has-cover");
+  target.style.background = album ? albumTheme(album.name) : "";
+}
+
+function renderFavoritesArtwork(target, favoriteTracks) {
+  if (!target) return;
+  target.innerHTML = "";
+  target.classList.remove("has-cover");
+  target.style.background = "linear-gradient(135deg, rgba(222, 127, 139, 0.92), rgba(241, 191, 102, 0.95))";
+  const icon = document.createElement("span");
+  icon.className = "favorites-art-icon";
+  icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>';
+  target.append(icon);
+}
+
+function cleanLyricsTitle(title) {
+  return String(title || "")
+    .replace(/\s*\((feat\.|ft\.|with|from).*?\)\s*/gi, " ")
+    .replace(/\s*\((Taylor's Version|TV|Remastered.*?|Live.*?|Version.*?|Explicit)\)\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function updateLyricsButtonState() {
+  if (!lyricsBtn) return;
+  const mobile = isMobileViewport();
+  const collapsed = document.body.classList.contains("player-collapsed");
+  const fullscreen = document.body.classList.contains("player-fullscreen");
+  lyricsBtn.hidden = Boolean(mobile && !fullscreen);
+  lyricsBtn.classList.toggle("active", lyricsOpen);
+  lyricsBtn.setAttribute("aria-label", lyricsOpen ? "Hide lyrics" : "Show lyrics");
+  lyricsBtn.setAttribute("title", lyricsOpen ? "Hide lyrics" : "Lyrics");
+  if (!mobile) lyricsBtn.hidden = false;
+  if (mobile && collapsed) lyricsBtn.hidden = true;
+}
+
+function positionLyricsButton() {
+  if (!lyricsBtn) return;
+  const controls = document.querySelector(".controls");
+  if (!controls) return;
+  if (isMobileViewport() && document.body.classList.contains("player-fullscreen")) {
+    if (fullActionsRight && lyricsBtn.parentElement !== fullActionsRight) {
+      fullActionsRight.appendChild(lyricsBtn);
+    }
+    return;
+  }
+  if (lyricsBtn.parentElement !== controls) {
+    controls.appendChild(lyricsBtn);
+  }
+}
+
+function getLyricsCacheEntry(track) {
+  const cache = readLyricsCache();
+  return cache[track.key] || null;
+}
+
+function saveLyricsCacheEntry(track, artist, title, lyrics) {
+  const cache = readLyricsCache();
+  cache[track.key] = {
+    artist,
+    title,
+    lyrics,
+    ts: Date.now()
+  };
+  writeLyricsCache(cache);
+}
+
+async function fetchLyricsForTrack(track) {
+  const { artist, title } = lyricsLookupForTrack(track);
+  if (!artist) throw new Error("Lyrics are available for tracks with artist metadata.");
+  const normalizedTitle = cleanLyricsTitle(title);
+  const cached = getLyricsCacheEntry(track);
+  if (cached && cached.artist === artist && cached.title === normalizedTitle && cached.lyrics) {
+    return cached.lyrics;
+  }
+
+  const url = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(normalizedTitle)}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(response.status === 404 ? "Lyrics not found for this song." : "Lyrics service is unavailable right now.");
+  }
+  const data = await response.json();
+  const lyrics = String(data?.lyrics || "").trim();
+  if (!lyrics) throw new Error("Lyrics not found for this song.");
+  saveLyricsCacheEntry(track, artist, normalizedTitle, lyrics);
+  return lyrics;
+}
+
+function renderLyricsPanelState(message = "") {
+  if (!lyricsPanel || !lyricsStatus || !lyricsText || !lyricsPanelTitle || !lyricsPanelMeta) return;
+  const track = tracks[currentIndex];
+  if (!lyricsOpen) {
+    lyricsPanel.hidden = true;
+    lyricsStatus.textContent = "";
+    lyricsText.textContent = "";
+    return;
+  }
+
+  lyricsPanel.hidden = false;
+  if (!track) {
+    lyricsPanelTitle.textContent = "Lyrics";
+    lyricsPanelMeta.textContent = "Choose a song";
+    lyricsStatus.textContent = "Select a song to view lyrics.";
+    lyricsText.textContent = "";
+    return;
+  }
+
+  const { artist, title } = lyricsLookupForTrack(track);
+  lyricsPanelTitle.textContent = title || "Lyrics";
+  lyricsPanelMeta.textContent = [artist, track.album].filter(Boolean).join(" • ") || "Lyrics lookup";
+
+  lyricsStatus.textContent = message || "";
+}
+
+async function loadLyricsPanel() {
+  const track = tracks[currentIndex];
+  if (!track) {
+    renderLyricsPanelState("Select a song to view lyrics.");
+    return;
+  }
+  const { artist, title } = lyricsLookupForTrack(track);
+  const lookupTitle = cleanLyricsTitle(title);
+  lyricsTrackKey = track.key;
+  lyricsLoading = true;
+  renderLyricsPanelState("Loading lyrics...");
+  if (lyricsText) lyricsText.textContent = "";
+
+  try {
+    const lyrics = await fetchLyricsForTrack(track);
+    if (!lyricsOpen || lyricsTrackKey !== track.key) return;
+    if (lyricsPanelTitle) lyricsPanelTitle.textContent = lookupTitle || title || "Lyrics";
+    if (lyricsPanelMeta) lyricsPanelMeta.textContent = [artist, track.album].filter(Boolean).join(" • ") || "Lyrics lookup";
+    lyricsStatus.textContent = "";
+    lyricsText.textContent = lyrics;
+  } catch (error) {
+    if (!lyricsOpen || lyricsTrackKey !== track.key) return;
+    lyricsStatus.textContent = error.message || "Lyrics unavailable.";
+    lyricsText.textContent = "";
+  } finally {
+    lyricsLoading = false;
+  }
+}
+
+function openLyricsPanel() {
+  if (!lyricsBtn) return;
+  if (!tracks.length || currentIndex === -1) {
+    lyricsOpen = true;
+    document.body.classList.add("lyrics-open");
+    renderLyricsPanelState("Select a song to view lyrics.");
+    updateLyricsButtonState();
+    positionLyricsButton();
+    return;
+  }
+  lyricsOpen = true;
+  document.body.classList.add("lyrics-open");
+  setQueueOpen(false);
+  updateLyricsButtonState();
+  positionLyricsButton();
+  renderLyricsPanelState("Loading lyrics...");
+  loadLyricsPanel();
+}
+
+function closeLyricsPanel() {
+  lyricsOpen = false;
+  lyricsLoading = false;
+  lyricsTrackKey = "";
+  document.body.classList.remove("lyrics-open");
+  updateLyricsButtonState();
+  positionLyricsButton();
+  renderLyricsPanelState();
+}
+
+function toggleLyricsPanel() {
+  if (lyricsOpen) closeLyricsPanel();
+  else openLyricsPanel();
+}
+
+function renderSearchPanel(albums, songRows) {
+  if (!searchPanel) return;
+  const hasQuery = Boolean(searchQuery);
+  const hasResults = hasQuery && (albums.length > 0 || songRows.length > 0);
+  searchPanel.hidden = !hasResults;
+  searchPanel.innerHTML = "";
+
+  if (!hasResults) return;
+
+  if (albums.length) {
+    const albumGroup = document.createElement("div");
+    albumGroup.className = "search-group";
+    const heading = document.createElement("span");
+    heading.className = "search-group-title";
+    heading.textContent = "Albums";
+    albumGroup.append(heading);
+
+    albums.slice(0, 4).forEach((album) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "search-item";
+      item.addEventListener("click", () => {
+        searchInput.focus();
+        openAlbum(album.name);
+      });
+
+      const copy = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = album.name;
+      const meta = document.createElement("small");
+      meta.textContent = `${album.tracks.length} ${album.tracks.length === 1 ? "song" : "songs"}`;
+      copy.append(title, meta);
+      item.append(copy);
+      albumGroup.append(item);
+    });
+
+    searchPanel.append(albumGroup);
+  }
+
+  if (songRows.length) {
+    const songGroup = document.createElement("div");
+    songGroup.className = "search-group";
+    const heading = document.createElement("span");
+    heading.className = "search-group-title";
+    heading.textContent = "Songs";
+    songGroup.append(heading);
+
+    songRows.slice(0, 6).forEach(({ track, index, plays }) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "search-item";
+      item.addEventListener("click", () => {
+        setQueueContextList(searchQuery ? "search" : "mostPlayed", songRows.map((row) => row.index), index);
+        loadTrack(index);
+      });
+
+      const copy = document.createElement("span");
+      const title = document.createElement("strong");
+      title.textContent = track.title;
+      const meta = document.createElement("small");
+      const source = track.album || track.repo || "";
+      meta.textContent = `${source}${source ? " - " : ""}${plays} plays`;
+      copy.append(title, meta);
+      item.append(copy);
+      songGroup.append(item);
+    });
+
+    searchPanel.append(songGroup);
+  }
+}
+
 function baseQueueItems({ ignoreShuffle = false } = {}) {
   const currentTrack = tracks[currentIndex];
   if (!currentTrack) return [];
@@ -529,8 +890,14 @@ async function loadTrack(index, autoplay = true) {
   setMediaMetadata(track);
   setMediaPlaybackState();
   updateFavoriteButton();
+  updateLyricsButtonState();
   renderPlaylist();
   renderHome();
+  if (lyricsOpen) {
+    loadLyricsPanel();
+  } else {
+    renderLyricsPanelState();
+  }
 
   if (autoplay) {
     playAudio();
@@ -811,7 +1178,9 @@ function groupedAlbums() {
 }
 
 function renderHome() {
-  const albums = [...groupedAlbums().values()];
+  const allAlbums = [...groupedAlbums().values()];
+  searchQuery = normalizeSearchQuery(searchInput?.value);
+  const searchAlbums = searchQuery ? allAlbums.filter((album) => albumMatchesSearch(album, searchQuery)) : [];
   albumGrid.innerHTML = "";
   songGrid.innerHTML = "";
 
@@ -820,7 +1189,7 @@ function renderHome() {
     songGrid.innerHTML = '<div class="home-empty">Songs will appear here once the GitHub library loads.</div>';
   }
 
-  albums.forEach((album, albumIndex) => {
+  allAlbums.forEach((album, albumIndex) => {
     const button = document.createElement("button");
     button.className = `album-card${album.name === selectedAlbumName ? " active" : ""}`;
     button.type = "button";
@@ -855,15 +1224,27 @@ function renderHome() {
     .filter((item) => item.plays > 0)
     .sort((a, b) => b.plays - a.plays || a.track.title.localeCompare(b.track.title))
     .slice(0, mostPlayedLimit);
-  const mostPlayedIndices = mostPlayedTracks.map((item) => item.index);
+  const songRows = searchQuery
+    ? tracks
+      .map((track, index) => ({ track, index, plays: playCountFor(track) }))
+      .filter((item) => trackSearchText(item.track).includes(searchQuery))
+      .sort((a, b) => {
+        const aExact = trackTitleMatchesSearch(a.track, searchQuery) ? 1 : 0;
+        const bExact = trackTitleMatchesSearch(b.track, searchQuery) ? 1 : 0;
+        return bExact - aExact || b.plays - a.plays || a.track.title.localeCompare(b.track.title);
+      })
+    : mostPlayedTracks;
+  const songQueueIndices = songRows.map((item) => item.index);
+  const songLabel = searchQuery ? "Search Results" : "Most Played";
+  if (songsHeading) songsHeading.textContent = songLabel;
 
-  mostPlayedTracks.forEach(({ track, index, plays }, rank) => {
+  songRows.forEach(({ track, index, plays }, rank) => {
     const button = document.createElement("button");
     button.className = `song-row${index === currentIndex ? " active" : ""}`;
     button.type = "button";
     button.setAttribute("aria-label", `Play ${track.title}`);
     button.addEventListener("click", () => {
-      setQueueContextList("mostPlayed", mostPlayedIndices, index);
+      setQueueContextList(searchQuery ? "search" : "mostPlayed", songQueueIndices, index);
       loadTrack(index);
     });
 
@@ -892,7 +1273,9 @@ function renderHome() {
     songGrid.append(button);
   });
 
-  if (tracks.length && !mostPlayedTracks.length) {
+  if (searchQuery && !songRows.length) {
+    songGrid.innerHTML = '<div class="home-empty">No songs match your search.</div>';
+  } else if (tracks.length && !mostPlayedTracks.length && !searchQuery) {
     songGrid.innerHTML = '<div class="home-empty">Play a few songs and your most played tracks will appear here.</div>';
   }
 
@@ -917,17 +1300,27 @@ function renderHome() {
     favoritesPreview.append(chip);
   }
 
-  albumCount.textContent = `${albums.length} ${albums.length === 1 ? "album" : "albums"}`;
+  albumCount.textContent = `${allAlbums.length} ${allAlbums.length === 1 ? "album" : "albums"}`;
   const totalPlays = tracks.reduce((total, track) => total + playCountFor(track), 0);
   songCount.textContent = `${totalPlays} ${totalPlays === 1 ? "play" : "plays"}`;
-  sidebarLibraryCount.textContent = `${albums.length} albums, ${tracks.length} songs`;
-  renderAlbumDetail(albums);
+  sidebarLibraryCount.textContent = `${allAlbums.length} albums, ${tracks.length} songs`;
+  renderAlbumDetail(allAlbums);
   renderFavoritesDetail();
   if (!tracks.length) {
     libraryStatus.textContent = "Loading songs from GitHub...";
+  } else if (searchQuery) {
+    libraryStatus.textContent = `Searching for "${searchInput?.value.trim() || searchQuery}"`;
   } else {
     libraryStatus.textContent = "Choose an album or song to start listening.";
   }
+
+  renderSearchPanel(searchAlbums, songRows);
+  setDetailWindowState();
+}
+
+if (searchInput) {
+  searchInput.addEventListener("input", renderHome);
+  searchInput.addEventListener("search", renderHome);
 }
 
 function openAlbum(albumName) {
@@ -940,8 +1333,6 @@ function openAlbum(albumName) {
   selectedAlbumName = albumName;
   favoritesOpen = false;
   renderHome();
-  albumDetail.hidden = false;
-  albumDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function openFavorites() {
@@ -953,8 +1344,12 @@ function openFavorites() {
   favoritesOpen = true;
   selectedAlbumName = "";
   renderHome();
-  favoritesDetail.hidden = false;
-  favoritesDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function closeDetailWindow() {
+  selectedAlbumName = "";
+  favoritesOpen = false;
+  renderHome();
 }
 
 function renderAlbumDetail(albums = [...groupedAlbums().values()]) {
@@ -965,6 +1360,8 @@ function renderAlbumDetail(albums = [...groupedAlbums().values()]) {
 
   albumDetailTitle.textContent = album.name;
   albumDetailMeta.textContent = `${album.tracks.length} ${album.tracks.length === 1 ? "song" : "songs"}`;
+  if (albumDetailDescription) albumDetailDescription.textContent = albumDescription(album.name);
+  renderAlbumArtwork(albumDetailArt, album);
   playAlbumBtn.onclick = () => playAlbum(album);
   const albumIndices = album.tracks.map((item) => item.index);
 
@@ -1016,6 +1413,12 @@ function renderFavoritesDetail() {
   const favoriteIndices = favoriteTracks.map((item) => item.index);
 
   favoritesDetailMeta.textContent = `${favoriteTracks.length} ${favoriteTracks.length === 1 ? "song" : "songs"}`;
+  if (favoritesDetailDescription) {
+    favoritesDetailDescription.textContent = favoriteTracks.length
+      ? "Your saved songs from across the library, gathered into one quick-access collection."
+      : "Your saved songs from across the library, gathered into one quick-access collection.";
+  }
+  renderFavoritesArtwork(favoritesDetailArt, favoriteTracks);
 
   if (!favoriteTracks.length) {
     favoritesSongList.innerHTML = '<div class="home-empty">No favorites yet. Tap the heart on a song to save it.</div>';
@@ -1281,18 +1684,15 @@ function isMobileViewport() {
 function collapseMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-fullscreen");
   if (isMobileViewport()) document.body.classList.add("player-collapsed");
+  if (isMobileViewport() && lyricsOpen) closeLyricsPanel();
   positionFullscreenActionRow();
-  positionFavoriteButton();
-  positionMuteButton();
-  positionQueueToggleButton();
+  updatePlayerActionPlacement();
 }
 
 function expandMobilePlayer() {
   if (isMobileViewport()) document.body.classList.remove("player-collapsed");
   positionFullscreenActionRow();
-  positionFavoriteButton();
-  positionMuteButton();
-  positionQueueToggleButton();
+  updatePlayerActionPlacement();
 }
 
 fileInput.addEventListener("change", (event) => addFiles(event.target.files));
@@ -1306,6 +1706,8 @@ prevBtn.addEventListener("click", previousTrack);
 nextBtn.addEventListener("click", nextTrack);
 shuffleAllBtn.addEventListener("click", shuffleAllAlbums);
 favoritesCard.addEventListener("click", openFavorites);
+if (closeAlbumDetailBtn) closeAlbumDetailBtn.addEventListener("click", closeDetailWindow);
+if (closeFavoritesDetailBtn) closeFavoritesDetailBtn.addEventListener("click", closeDetailWindow);
 
 shuffleBtn.addEventListener("click", () => {
   shuffle = !shuffle;
@@ -1320,6 +1722,8 @@ shuffleBtn.addEventListener("click", () => {
 });
 
 favoriteBtn.addEventListener("click", () => toggleFavorite(tracks[currentIndex]));
+if (lyricsBtn) lyricsBtn.addEventListener("click", toggleLyricsPanel);
+if (closeLyricsBtn) closeLyricsBtn.addEventListener("click", closeLyricsPanel);
 
 repeatBtn.addEventListener("click", () => {
   repeat = !repeat;
@@ -1358,6 +1762,14 @@ function positionQueueToggleButton() {
   }
 }
 
+function updatePlayerActionPlacement() {
+  positionFavoriteButton();
+  positionMuteButton();
+  positionQueueToggleButton();
+  positionLyricsButton();
+  updateLyricsButtonState();
+}
+
 function positionFullscreenActionRow() {
   if (!fullActionsRow) return;
   const show = isMobileViewport() && document.body.classList.contains("player-fullscreen");
@@ -1369,9 +1781,7 @@ function openFullscreenPlayer() {
   document.body.classList.add("player-fullscreen");
   document.body.classList.remove("player-collapsed");
   positionFullscreenActionRow();
-  positionFavoriteButton();
-  positionMuteButton();
-  positionQueueToggleButton();
+  updatePlayerActionPlacement();
   refreshQueueToggleVisibility();
 }
 
@@ -1379,10 +1789,9 @@ function closeFullscreenPlayer() {
   if (!isMobileViewport()) return;
   document.body.classList.remove("player-fullscreen");
   document.body.classList.add("player-collapsed");
+  if (lyricsOpen) closeLyricsPanel();
   positionFullscreenActionRow();
-  positionFavoriteButton();
-  positionMuteButton();
-  positionQueueToggleButton();
+  updatePlayerActionPlacement();
   refreshQueueToggleVisibility();
 }
 
@@ -1441,10 +1850,8 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 
 window.addEventListener("resize", () => {
-  positionFavoriteButton();
-  positionMuteButton();
+  updatePlayerActionPlacement();
   refreshQueueToggleVisibility();
-  positionQueueToggleButton();
   positionFullscreenActionRow();
   if (!isMobileViewport()) document.body.classList.remove("player-fullscreen");
 });
@@ -1570,7 +1977,8 @@ if ("serviceWorker" in navigator) {
 renderPlaylist();
 renderHome();
 loadDefaultGithubAlbums();
-positionFavoriteButton();
-positionMuteButton();
+updatePlayerActionPlacement();
 refreshQueueToggleVisibility();
 positionFullscreenActionRow();
+
+

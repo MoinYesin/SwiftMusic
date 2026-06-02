@@ -36,6 +36,13 @@
             <p class="eyebrow">Hello!</p>
             <h1>Listen Now</h1>
             <p class="hero-copy">Midnights, Reputation, 1989 TV, and Lover, all in one place. More albums coming soon.</p>
+            <div class="search-shell">
+              <label class="search-bar" for="searchInput" aria-label="Search songs and albums">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm8.2 14.7-4.2-4.2"/></svg>
+                <input id="searchInput" type="search" placeholder="Search songs and albums" autocomplete="off">
+              </label>
+              <div id="searchPanel" class="search-panel" hidden></div>
+            </div>
           </div>
           <div class="home-stats" aria-label="Library stats">
             <span id="albumCount">0 albums</span>
@@ -62,10 +69,20 @@
 
         <section id="favoritesDetail" class="album-detail favorites-detail" aria-labelledby="favoritesDetailTitle" hidden>
           <div class="album-detail-head">
+            <button id="closeFavoritesDetailBtn" class="icon-button detail-close" type="button" aria-label="Close favorites" title="Close favorites">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+            </button>
             <div>
               <p class="eyebrow">Favorites</p>
               <h2 id="favoritesDetailTitle">Saved Songs</h2>
               <span id="favoritesDetailMeta">0 songs</span>
+            </div>
+            <span class="detail-head-spacer" aria-hidden="true"></span>
+          </div>
+          <div class="detail-hero favorites-hero">
+            <div id="favoritesDetailArt" class="detail-cover favorites-cover" aria-hidden="true"></div>
+            <div class="detail-copy">
+              <p id="favoritesDetailDescription" class="detail-description"></p>
             </div>
           </div>
           <div id="favoritesSongList" class="album-song-list favorites-song-list"></div>
@@ -81,12 +98,21 @@
 
         <section id="albumDetail" class="album-detail" aria-labelledby="albumDetailTitle" hidden>
           <div class="album-detail-head">
+            <button id="closeAlbumDetailBtn" class="icon-button detail-close" type="button" aria-label="Close album" title="Close album">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+            </button>
             <div>
               <p class="eyebrow">Album</p>
               <h2 id="albumDetailTitle">Album</h2>
               <span id="albumDetailMeta">0 songs</span>
             </div>
             <button id="playAlbumBtn" type="button" class="primary-button">Play Album</button>
+          </div>
+          <div class="detail-hero album-hero">
+            <div id="albumDetailArt" class="detail-cover album-cover" aria-hidden="true"></div>
+            <div class="detail-copy">
+              <p id="albumDetailDescription" class="detail-description"></p>
+            </div>
           </div>
           <div id="albumSongList" class="album-song-list"></div>
         </section>
@@ -170,9 +196,27 @@
           <button id="repeatBtn" class="icon-button" type="button" aria-label="Repeat" title="Repeat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></svg>
           </button>
+          <button id="lyricsBtn" class="icon-button" type="button" aria-label="Show lyrics" title="Lyrics">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h10M8 10h10M8 14h7M4 6h.01M4 10h.01M4 14h.01M5 18h14"/></svg>
+          </button>
         </section>
 
         <div id="playerRightActions" class="player-right-actions" aria-hidden="true"></div>
+
+        <section id="lyricsPanel" class="lyrics-panel" aria-label="Lyrics panel" hidden>
+          <div class="lyrics-panel-head">
+            <div>
+              <p class="eyebrow">Lyrics</p>
+              <h2 id="lyricsPanelTitle">Lyrics</h2>
+              <span id="lyricsPanelMeta">Choose a song</span>
+            </div>
+            <button id="closeLyricsBtn" class="icon-button" type="button" aria-label="Close lyrics" title="Close lyrics">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <div id="lyricsStatus" class="lyrics-status">Select a song to view lyrics.</div>
+          <div id="lyricsText" class="lyrics-text"></div>
+        </section>
       </section>
 
       <aside class="queue" aria-label="Playlist">

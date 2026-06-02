@@ -1,5 +1,5 @@
 /* Minimal offline shell for installability. */
-const CACHE = "taylor-stream-v4";
+const CACHE = "taylor-stream-v5";
 
 const ASSETS = [
   "./",
@@ -50,4 +50,3 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request))
   );
 });
-

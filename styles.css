@@ -184,10 +184,10 @@ svg {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 20px;
-  min-height: 160px;
+  min-height: 128px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 20px;
+  padding: 16px;
   background:
     radial-gradient(circle at 82% 12%, rgba(241, 191, 102, 0.32), transparent 26%),
     linear-gradient(135deg, rgba(121, 167, 255, 0.18), rgba(222, 127, 139, 0.16)),
@@ -209,10 +209,10 @@ p {
   margin-top: 0;
 }
 
-h1 {
+.home-hero h1 {
   margin-bottom: 0;
-  font-size: clamp(2.4rem, 5.7vw, 5.4rem);
-  line-height: 0.94;
+  font-size: clamp(1.25rem, 3vw, 2.7rem);
+  line-height: 0.98;
 }
 
 h2 {
@@ -225,6 +225,122 @@ h2 {
   color: var(--muted);
   font-size: clamp(0.98rem, 1.8vw, 1.12rem);
   line-height: 1.5;
+}
+
+.search-bar {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: min(100%, 520px);
+  margin-top: 16px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(10, 12, 15, 0.32);
+}
+
+.search-bar:focus-within {
+  border-color: rgba(115, 208, 173, 0.55);
+  background: rgba(10, 12, 15, 0.45);
+}
+
+.search-bar svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--muted);
+}
+
+.search-bar input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.search-bar input::placeholder {
+  color: var(--soft);
+}
+
+.search-shell {
+  position: relative;
+  width: min(100%, 520px);
+}
+
+.search-panel {
+  position: absolute;
+  left: 0;
+  top: calc(100% - 1px);
+  z-index: 7;
+  width: 100%;
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 0;
+  border-radius: 0 0 8px 8px;
+  box-sizing: border-box;
+  background: rgba(14, 17, 21, 0.98);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.search-group {
+  padding: 10px;
+}
+
+.search-group + .search-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.search-group-title {
+  display: block;
+  margin: 2px 4px 8px;
+  color: var(--soft);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.search-item {
+  display: grid;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--text);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.search-item + .search-item {
+  margin-top: 8px;
+}
+
+.search-item:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.search-item strong,
+.search-item small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-item strong {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.search-item small {
+  margin-top: 3px;
+  color: var(--soft);
+  font-size: 0.75rem;
 }
 
 .home-stats {
@@ -384,6 +500,192 @@ h2 {
   border-radius: 8px;
   padding: 18px;
   background: rgba(255, 255, 255, 0.035);
+}
+
+body.detail-open {
+  overflow: hidden;
+}
+
+body.detail-open::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 11;
+  background: rgba(6, 8, 10, 0.58);
+  backdrop-filter: blur(6px);
+}
+
+body.detail-open .home {
+  position: fixed;
+  left: calc(230px + 14px + 12px);
+  right: calc(340px + 14px + 12px);
+  top: 12px;
+  bottom: 124px;
+  z-index: 14;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 88% 10%, rgba(241, 191, 102, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(121, 167, 255, 0.11), rgba(20, 23, 27, 0.96) 68%),
+    rgba(20, 23, 27, 0.98);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+body.detail-open .home > :not(.album-detail):not(.favorites-detail) {
+  display: none;
+}
+
+body.detail-open .album-detail,
+body.detail-open .favorites-detail {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+  margin-top: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body.detail-open .album-detail-head {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+
+body.detail-open .album-detail-head > div {
+  min-width: 0;
+}
+
+body.detail-open .album-detail-head h2 {
+  font-size: clamp(1.6rem, 3.6vw, 3.5rem);
+  line-height: 0.96;
+}
+
+body.detail-open .detail-close {
+  width: 40px;
+  height: 40px;
+}
+
+body.detail-open .detail-head-spacer {
+  display: block;
+  width: 118px;
+  height: 40px;
+}
+
+body.detail-open .detail-hero {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+body.detail-open .detail-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 220px;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(241, 191, 102, 0.36), transparent 30%),
+    linear-gradient(145deg, rgba(115, 208, 173, 0.26), rgba(222, 127, 139, 0.2)),
+    #16191b;
+}
+
+body.detail-open .detail-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+body.detail-open .detail-cover.has-cover {
+  background: #16191b;
+}
+
+body.detail-open .favorites-cover {
+  padding: 10px;
+}
+
+body.detail-open .favorites-art-collage {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+}
+
+body.detail-open .favorites-art-tile {
+  border-radius: 8px;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+body.detail-open .favorites-art-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: var(--ink);
+}
+
+body.detail-open .favorites-art-icon svg {
+  width: 64px;
+  height: 64px;
+  fill: currentColor;
+  stroke: currentColor;
+}
+
+body.detail-open .detail-copy {
+  min-width: 0;
+}
+
+body.detail-open .detail-description {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.96rem;
+  line-height: 1.6;
+  max-width: 58ch;
+}
+
+body.detail-open .album-song-list,
+body.detail-open .favorites-song-list {
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+body.detail-open .player {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 30;
+}
+
+body.detail-open.player-fullscreen .player {
+  z-index: 40;
+}
+
+body.lyrics-open .player {
+  z-index: 32;
+}
+
+body.lyrics-open.player-fullscreen .player {
+  z-index: 60;
 }
 
 .favorites-card {
@@ -714,6 +1016,7 @@ h2 {
 .player {
   grid-column: 2 / -1;
   grid-row: 2;
+  position: relative;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto minmax(60px, 1fr);
   grid-template-rows: auto auto;
@@ -879,6 +1182,68 @@ input[type="range"] {
 .player-right-actions .icon-button {
   width: 40px;
   height: 40px;
+}
+
+.lyrics-panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 12px);
+  z-index: 34;
+  display: none;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 14px;
+  min-height: min(52vh, 520px);
+  max-height: min(58vh, 520px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 18px;
+  background: rgba(14, 17, 21, 0.98);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+body.lyrics-open .lyrics-panel {
+  display: grid;
+}
+
+.lyrics-panel-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.lyrics-panel-head h2 {
+  margin-bottom: 2px;
+  font-size: 1.2rem;
+}
+
+.lyrics-panel-head span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.lyrics-panel .eyebrow {
+  margin-bottom: 6px;
+}
+
+.lyrics-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.lyrics-text {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 2px;
+  color: var(--text);
+  font-size: 0.96rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .queue-toggle {
@@ -1163,8 +1528,52 @@ body.dragging .player {
 
   .home-hero {
     grid-template-columns: 1fr;
-    min-height: 102px;
+    min-height: 88px;
+    padding: 12px;
+  }
+
+  body.detail-open .home {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    bottom: 92px;
     padding: 14px;
+  }
+
+  body.detail-open .player {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 40;
+  }
+
+  body.detail-open.player-fullscreen .player {
+    z-index: 50;
+  }
+
+  body.detail-open .detail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  body.detail-open .detail-cover {
+    width: min(30vw, 180px);
+    margin-inline: auto;
+  }
+
+  body.detail-open .album-detail-head {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+  }
+
+  body.detail-open .detail-head-spacer {
+    display: none;
+  }
+
+  .search-bar {
+    width: 100%;
+  }
+
+  .search-panel {
+    width: 100%;
   }
 
   .hero-copy {
@@ -1322,6 +1731,16 @@ body.dragging .player {
   body.player-fullscreen .timeline {
     width: min(560px, 100%);
     margin: 10px auto 0;
+  }
+
+  body.player-fullscreen .lyrics-panel {
+    left: 16px;
+    right: 16px;
+    top: 76px;
+    bottom: 16px;
+    max-height: none;
+    min-height: 0;
+    z-index: 61;
   }
 
   body.player-fullscreen .full-actions-row {
@@ -1504,7 +1923,8 @@ body.dragging .player {
 
   body.player-collapsed #shuffleBtn,
   body.player-collapsed #repeatBtn,
-  body.player-collapsed #muteBtn {
+  body.player-collapsed #muteBtn,
+  body.player-collapsed #lyricsBtn {
     display: none;
   }
 
@@ -1554,12 +1974,12 @@ body.dragging .player {
   }
 
   .home-hero {
-    min-height: 96px;
-    padding: 12px;
+    min-height: 84px;
+    padding: 10px 12px;
   }
 
-  h1 {
-    font-size: clamp(2.05rem, 13.4vw, 3.9rem);
+  .home-hero h1 {
+    font-size: clamp(1.15rem, 8.8vw, 2.2rem);
   }
 
   .song-grid {
