@@ -7,16 +7,24 @@
     <meta name="theme-color" content="#0d0f12">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="shell">
       <aside class="sidebar" aria-label="Navigation">
         <div class="brand">
-          <img class="brand-mark" src="logo.png" alt="Swift Music">
-          <div>
-            <strong>Swift Music</strong>
+          <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1; min-width: 0;">
+            <img class="brand-mark" src="logo.png" alt="Swift Music">
+            <div style="min-width: 0;">
+              <strong>Swift Music</strong>
+            </div>
           </div>
+          <button id="aboutBtn" class="icon-button about-btn" type="button" aria-label="About Artist" title="About">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </button>
         </div>
         <nav class="nav-list" aria-label="Primary">
           <a href="#home" class="nav-item active">Home</a>
@@ -32,16 +40,26 @@
 
       <section id="home" class="home" aria-label="Home">
         <header class="home-hero">
-          <div>
-            <p class="eyebrow">Hello!</p>
-            <h1>Listen Now</h1>
-            <p class="hero-copy">Midnights, Reputation, 1989 TV, and Lover, all in one place. More albums coming soon.</p>
+          <div class="mobile-brand-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <img class="mobile-brand-logo" src="logo.png" alt="Swift Music Logo">
+              <span class="mobile-brand-title">Swift Music</span>
+            </div>
+            <button id="mobileAboutBtn" class="icon-button about-btn" type="button" aria-label="About Artist" title="About">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            </button>
+          </div>
+          <div class="hero-main-content" style="width: 100%; min-width: 0;">
             <div class="search-shell">
-              <label class="search-bar" for="searchInput" aria-label="Search songs and albums">
+              <label class="search-bar" for="searchInput" aria-label="Search songs and albums" style="margin-top: 0; width: 100%;">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13Zm8.2 14.7-4.2-4.2"/></svg>
                 <input id="searchInput" type="search" placeholder="Search songs and albums" autocomplete="off">
               </label>
               <div id="searchPanel" class="search-panel" hidden></div>
+            </div>
+            <div class="daily-mixes-section">
+              <p class="eyebrow" style="margin-top: 14px; margin-bottom: 6px;">Made For You</p>
+              <div id="dailyMixGrid" class="daily-mix-grid"></div>
             </div>
           </div>
           <div class="home-stats" aria-label="Library stats">
@@ -50,43 +68,6 @@
             <button id="shuffleAllBtn" type="button" class="primary-button">Shuffle All</button>
           </div>
         </header>
-
-        <section class="home-section" aria-labelledby="favoritesHeading">
-          <div class="section-head">
-            <h2 id="favoritesHeading">Favorites</h2>
-          </div>
-          <button id="favoritesCard" type="button" class="favorites-card" aria-label="Open favorites">
-            <span class="favorites-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
-            </span>
-            <span class="favorites-copy">
-              <strong>Saved Songs</strong>
-              <span id="favoritesMeta">0 favorites</span>
-            </span>
-            <span id="favoritesPreview" class="favorites-preview" aria-hidden="true"></span>
-          </button>
-        </section>
-
-        <section id="favoritesDetail" class="album-detail favorites-detail" aria-labelledby="favoritesDetailTitle" hidden>
-          <div class="album-detail-head">
-            <button id="closeFavoritesDetailBtn" class="icon-button detail-close" type="button" aria-label="Close favorites" title="Close favorites">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
-            </button>
-            <div>
-              <p class="eyebrow">Favorites</p>
-              <h2 id="favoritesDetailTitle">Saved Songs</h2>
-              <span id="favoritesDetailMeta">0 songs</span>
-            </div>
-            <span class="detail-head-spacer" aria-hidden="true"></span>
-          </div>
-          <div class="detail-hero favorites-hero">
-            <div id="favoritesDetailArt" class="detail-cover favorites-cover" aria-hidden="true"></div>
-            <div class="detail-copy">
-              <p id="favoritesDetailDescription" class="detail-description"></p>
-            </div>
-          </div>
-          <div id="favoritesSongList" class="album-song-list favorites-song-list"></div>
-        </section>
 
         <section class="home-section" aria-labelledby="albumsHeading">
           <div class="section-head">
@@ -106,10 +87,20 @@
               <h2 id="albumDetailTitle">Album</h2>
               <span id="albumDetailMeta">0 songs</span>
             </div>
-            <button id="playAlbumBtn" type="button" class="primary-button">Play Album</button>
+            <span class="detail-head-spacer" aria-hidden="true"></span>
           </div>
           <div class="detail-hero album-hero">
-            <div id="albumDetailArt" class="detail-cover album-cover" aria-hidden="true"></div>
+            <div class="playlist-cover-wrapper" style="display: flex; flex-direction: column; gap: 12px; width: 220px; margin-inline: auto;">
+              <div id="albumDetailArt" class="detail-cover album-cover" aria-hidden="true"></div>
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <button id="playAlbumBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem;">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; stroke: none;"><path d="M8 5v14l11-7z"/></svg> Play
+                </button>
+                <button id="shufflePlayAlbumBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--text);">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor;"><path d="M16 3h5v5M4 20l5.5-5.5M15 4l6 6M4 4l16 16M16 21h5v-5"/></svg> Shuffle
+                </button>
+              </div>
+            </div>
             <div class="detail-copy">
               <p id="albumDetailDescription" class="detail-description"></p>
             </div>
@@ -117,7 +108,93 @@
           <div id="albumSongList" class="album-song-list"></div>
         </section>
 
-        <section class="home-section" aria-labelledby="songsHeading">
+        <section class="home-section" aria-labelledby="playlistsHeading">
+          <div class="section-head">
+            <h2 id="playlistsHeading">My Playlists</h2>
+            <button id="createPlaylistBtn" type="button" class="primary-button" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">+ Create</button>
+          </div>
+          <div id="playlistGrid" class="album-grid"></div>
+        </section>
+
+        <section id="playlistDetail" class="album-detail favorites-detail" aria-labelledby="playlistDetailTitle" hidden>
+          <div class="album-detail-head">
+            <button id="closePlaylistDetailBtn" onclick="closeDetailWindow()" class="icon-button detail-close" type="button" aria-label="Close view">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+            </button>
+            <div>
+              <p class="eyebrow">Playlist</p>
+              <h2 id="playlistDetailTitle">My Dynamic Mix</h2>
+              <span id="playlistDetailMeta">0 songs</span>
+            </div>
+            <div class="playlist-options-container" style="display: flex; gap: 8px; align-items: center; position: relative;">
+              <button id="saveDailyMixBtn" type="button" class="primary-button" style="padding: 6px 12px; font-size: 0.82rem; border-radius: 8px; font-weight: 700;" hidden>Save as Playlist</button>
+              <button id="playlistOptionsBtn" type="button" class="icon-button" aria-label="Playlist options" title="Options">
+                <svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px; fill: none; stroke: currentColor;"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
+              <div id="playlistOptionsDropdown" class="playlist-options-dropdown" hidden>
+                <button id="renamePlaylistBtn" type="button" class="dropdown-item">Rename</button>
+                <button id="deletePlaylistBtn" type="button" class="dropdown-item dropdown-item-danger">Delete</button>
+              </div>
+            </div>
+          </div>
+          <div class="detail-hero playlist-hero">
+            <div class="playlist-cover-wrapper" style="display: flex; flex-direction: column; gap: 12px; width: 220px; margin-inline: auto;">
+              <div id="playlistDetailArt" class="detail-cover playlist-cover" aria-hidden="true"></div>
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <button id="playPlaylistBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem;">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; stroke: none;"><path d="M8 5v14l11-7z"/></svg> Play
+                </button>
+                <button id="shufflePlayPlaylistBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--text);">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor;"><path d="M16 3h5v5M4 20l5.5-5.5M15 4l6 6M4 4l16 16M16 21h5v-5"/></svg> Shuffle
+                </button>
+              </div>
+            </div>
+            <div class="detail-copy">
+              <p id="playlistDetailDescription" class="detail-description">A custom playlist collection created by you. Add songs easily using the '+' icon next to tracks in the dashboard.</p>
+            </div>
+          </div>
+          <div id="playlistSongList" class="album-song-list favorites-song-list"></div>
+        </section>
+
+        <section id="favoritesDetail" class="album-detail favorites-detail" aria-labelledby="favoritesDetailTitle" hidden>
+          <div class="album-detail-head">
+            <button id="closeFavoritesDetailBtn" class="icon-button detail-close" type="button" aria-label="Close favorites" title="Close favorites">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+            </button>
+            <div>
+              <p class="eyebrow">Liked</p>
+              <h2 id="favoritesDetailTitle">Liked Songs</h2>
+              <span id="favoritesDetailMeta">0 songs</span>
+            </div>
+            <span class="detail-head-spacer" aria-hidden="true"></span>
+          </div>
+          <div class="detail-hero favorites-hero">
+            <div class="playlist-cover-wrapper" style="display: flex; flex-direction: column; gap: 12px; width: 220px; margin-inline: auto;">
+              <div id="favoritesDetailArt" class="detail-cover favorites-cover" aria-hidden="true"></div>
+              <div style="display: flex; gap: 8px; width: 100%;">
+                <button id="playFavoritesBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem;">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; stroke: none;"><path d="M8 5v14l11-7z"/></svg> Play
+                </button>
+                <button id="shufflePlayFavoritesBtn" type="button" class="primary-button" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; font-size: 0.88rem; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--text);">
+                  <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: none; stroke: currentColor;"><path d="M16 3h5v5M4 20l5.5-5.5M15 4l6 6M4 4l16 16M16 21h5v-5"/></svg> Shuffle
+                </button>
+              </div>
+            </div>
+            <div class="detail-copy">
+              <p id="favoritesDetailDescription" class="detail-description"></p>
+            </div>
+          </div>
+          <div id="favoritesSongList" class="album-song-list favorites-song-list"></div>
+        </section>
+
+        <section class="home-section song-list-section" aria-labelledby="recommendedHeading">
+          <div class="section-head">
+            <h2 id="recommendedHeading">Recommended</h2>
+          </div>
+          <div id="recommendedGrid" class="song-grid"></div>
+        </section>
+
+        <section class="home-section song-list-section" aria-labelledby="songsHeading">
           <div class="section-head">
             <h2 id="songsHeading">Most Played</h2>
           </div>
@@ -126,6 +203,9 @@
       </section>
 
       <section class="player" aria-label="Audio player">
+        <div id="miniProgressContainer" class="mini-progress-container" aria-hidden="true">
+          <div id="miniProgressBar" class="mini-progress-bar"></div>
+        </div>
         <header class="topbar">
           <div>
             <p class="eyebrow">Now playing</p>
@@ -139,6 +219,7 @@
         </header>
 
         <header class="player-fullbar" aria-label="Expanded player">
+          <div class="player-drag-handle" aria-hidden="true"></div>
           <button id="playerMinimizeBtn" class="icon-button" type="button" aria-label="Close player" title="Close">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
           </button>
@@ -147,13 +228,18 @@
         </header>
 
         <section class="now-playing" aria-label="Now playing">
-          <div class="cover" aria-hidden="true">
-            <img id="coverArt" alt="" loading="lazy" hidden>
+          <div class="cover-container" aria-hidden="true">
+            <canvas id="visualizerCanvas" class="visualizer-canvas"></canvas>
+            <div class="cover">
+              <img id="coverArt" alt="" loading="lazy" hidden>
+            </div>
           </div>
           <div class="track-copy">
             <p id="statusText" class="status">Choose audio files to begin</p>
             <div class="title-row">
-              <h2 id="trackTitle">No track loaded</h2>
+              <div class="track-title-container">
+                <h2 id="trackTitle">No track loaded</h2>
+              </div>
               <div id="titleActions" class="title-actions" aria-hidden="true"></div>
             </div>
             <p id="trackMeta">MP3, WAV, OGG, M4A and other browser-supported audio files</p>
@@ -162,6 +248,8 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
           </button>
         </section>
+
+        <div id="lyricsTicker" class="lyrics-ticker" role="button" tabindex="0" hidden></div>
 
         <section class="timeline" aria-label="Playback timeline">
           <span id="currentTime">0:00</span>
@@ -190,20 +278,22 @@
           <button id="muteBtn" class="icon-button" type="button" aria-label="Mute" title="Mute">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5ZM16 9.5a4 4 0 0 1 0 5"/></svg>
           </button>
-          <button id="favoriteBtn" class="icon-button" type="button" aria-label="Favorite" title="Favorite">
+          <button id="favoriteBtn" class="icon-button" type="button" aria-label="Like" title="Like">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>
           </button>
           <button id="repeatBtn" class="icon-button" type="button" aria-label="Repeat" title="Repeat">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4M21 13v2a3 3 0 0 1-3 3H3"/></svg>
           </button>
           <button id="lyricsBtn" class="icon-button" type="button" aria-label="Show lyrics" title="Lyrics">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h10M8 10h10M8 14h7M4 6h.01M4 10h.01M4 14h.01M5 18h14"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="16" r="3"/><path d="M10 16V4l4 2M14 6h6M14 10h6M8 14h12M8 18h10"/></svg>
           </button>
         </section>
 
-        <div id="playerRightActions" class="player-right-actions" aria-hidden="true"></div>
+        <div id="playerRightActions" class="player-right-actions" aria-hidden="true">
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" title="Volume" class="volume-slider">
+        </div>
 
-        <section id="lyricsPanel" class="lyrics-panel" aria-label="Lyrics panel" hidden>
+        <section id="lyricsPanel" class="lyrics-panel" aria-label="Lyrics panel">
           <div class="lyrics-panel-head">
             <div>
               <p class="eyebrow">Lyrics</p>
@@ -220,6 +310,7 @@
       </section>
 
       <aside class="queue" aria-label="Playlist">
+        <div class="queue-drag-handle" aria-hidden="true"></div>
         <form id="githubForm" class="github-panel" hidden>
           <div>
             <p class="eyebrow">GitHub source</p>
@@ -261,6 +352,98 @@
         </div>
       </aside>
     </main>
+
+    <div id="playlistPickerPanel" class="playlist-picker-overlay" hidden>
+      <div class="playlist-picker-modal">
+        <div class="picker-header">
+          <div>
+            <p class="eyebrow">Add to Playlist</p>
+            <h2 id="pickerTrackTitle">Track Title</h2>
+          </div>
+          <button class="icon-button" type="button" onclick="closePlaylistPicker()" aria-label="Close" title="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div id="pickerList" class="picker-list"></div>
+      </div>
+    </div>
+
+    <div id="playlistModal" class="playlist-picker-overlay" hidden>
+      <div class="playlist-picker-modal">
+        <div class="picker-header">
+          <div>
+            <p class="eyebrow" id="playlistModalEyebrow">New Playlist</p>
+            <h2 id="playlistModalTitle">Create Playlist</h2>
+          </div>
+          <button class="icon-button" type="button" onclick="closePlaylistModal()" aria-label="Close" title="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <form id="playlistModalForm" class="playlist-modal-form" onsubmit="handlePlaylistModalSubmit(event)">
+          <input type="text" id="playlistModalInput" class="playlist-modal-input" placeholder="Playlist Name" required autocomplete="off">
+          <div style="display: flex; gap: 10px; justify-content: flex-end; width:100%;">
+            <button type="button" class="primary-button" onclick="closePlaylistModal()" style="background: transparent; border: 1px solid var(--line); color: var(--text);">Cancel</button>
+            <button type="submit" id="playlistModalSubmitBtn" class="primary-button">Confirm</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- About/Credits Modal -->
+    <div id="aboutModal" class="playlist-picker-overlay" onclick="if (event.target === this) closeAboutModal()" hidden>
+      <div class="playlist-picker-modal about-modal">
+        <div class="picker-header">
+          <div>
+            <p class="eyebrow">Credits & Info</p>
+            <h2>About Swift Music</h2>
+          </div>
+          <button class="icon-button" type="button" onclick="closeAboutModal()" aria-label="Close" title="Close">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18"/></svg>
+          </button>
+        </div>
+        <div class="about-content">
+          <div class="about-artist-hero">
+            <div class="about-avatar-wrapper">
+              <div class="about-avatar-fallback">TS</div>
+              <img class="about-artist-photo" src="https://imageio.forbes.com/specials-images/imageserve/646e6affb9a2a85595a62c39/0x0.jpg?format=jpg&amp;crop=1573,1574,x239,y256,safe&amp;height=416&amp;width=416&amp;fit=bounds" alt="Taylor Swift" onerror="this.style.display='none';">
+            </div>
+            <div class="about-artist-info">
+              <h3>Taylor Swift</h3>
+              <p class="about-artist-bio">Taylor Swift is a multi-Grammy-winning singer-songwriter known for her narrative songwriting, musical versatility, and immense global influence. From country to pop, folk, and alternative, she has redefined the modern music industry.</p>
+            </div>
+          </div>
+          <hr class="about-divider">
+          <div class="about-disclaimer">
+            <h4>Fan Project Disclaimer</h4>
+            <p>I am a passionate fan of Taylor Swift. This application is purely a hobby, fan-made project developed for educational and personal enjoyment. There is absolutely no intention of generating any revenue, advertising income, or commercializing this project in any form. All musical assets, names, and images belong to their respective copyright owners.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirmModal" class="confirm-overlay" hidden>
+      <div class="confirm-modal">
+        <p class="eyebrow">Confirm</p>
+        <h2 id="confirmTitle">Are you sure?</h2>
+        <p id="confirmMessage" class="confirm-message"></p>
+        <div class="confirm-actions">
+          <button id="confirmCancelBtn" type="button" class="confirm-btn confirm-btn-cancel">Cancel</button>
+          <button id="confirmOkBtn" type="button" class="confirm-btn confirm-btn-ok">Confirm</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Track Options Dropdown -->
+    <div id="trackDropdown" class="track-dropdown" hidden>
+      <button id="trackPlayNextOption" class="dropdown-item" type="button">Play Next</button>
+      <button id="trackAddOption" class="dropdown-item" type="button">Add to Playlist</button>
+      <button id="trackFavOption" class="dropdown-item" type="button">Like</button>
+      <button id="trackRemoveOption" class="dropdown-item dropdown-item-danger" type="button">Remove</button>
+    </div>
 
     <audio id="audio"></audio>
     <script src="app.js"></script>

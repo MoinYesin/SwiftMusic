@@ -13,7 +13,16 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    },
+    {
+      "src": "logo1.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "500x500",
+      "type": "image/png"
     }
   ]
 }
-
